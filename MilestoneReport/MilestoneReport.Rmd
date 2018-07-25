@@ -1,0 +1,21 @@
+---
+title: "Milestone Report"
+author: "Koji"
+date: "2018/7/25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+1. Demonstrate that you've downloaded the data and have successfully loaded it in.
+2. Create a basic report of summary statistics about the data sets.
+3. Report any interesting findings that you amassed so far.
+4. Get feedback on your plans for creating a prediction algorithm and Shiny app.
+
+1. Does the link lead to an HTML page describing the exploratory analysis of the training data set?
+2. Has the data scientist done basic summaries of the three files? Word counts, line counts and basic data tables?
+3. Has the data scientist made basic plots, such as histograms to illustrate features of the data?
+4. Was the report written in a brief, concise style, in a way that a non-data scientist manager could appreciate?

@@ -9,15 +9,42 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## Library
+
 ```{r}
 library(stringr)
 ```
 
+## Download Data
+
 ```{r}
-blogs <- "data/final/en_US/en_US.blogs.txt"
-twitter <- "data/final/en_US/en_US.twitter.txt"
-news <- "data/final/en_US/en_US.news.txt"
+# Download Data
+rawDataFileUrl <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+workingDataPath <- file.path("..", "data")
+downloadedZipfilePath <- file.path(workingDataPath, "Coursera-SwiftKey.zip")
+basePath <- file.path("..", "data", "final", "en_US")
+
+# Create working directory
+if(!file.exists(workingDataPath)) {
+        dir.create(workingDataPath)
+}
+# Download ziped file
+if(!file.exists(downloadedZipfilePath)) {
+        download.file(rawDataFileUrl, destfile = downloadedZipfilePath, method = "curl")
+}
+# Unzip
+if(!file.exists(basePath)) {
+        unzip(zipfile = downloadedZipfilePath, exdir = workingDataPath)
+}
+
+blogs <- file.path(basePath, "en_US.blogs.txt")
+twitter <- file.path(basePath, "en_US.twitter.txt")
+news <- file.path(basePath, "en_US.news.txt")
 ```
+
+## Processing
+
+Processing on file {{blogs}}.
 
 ```{r}
 q1_len <- file.info(blogs)$size / 1024 / 1024
@@ -29,6 +56,8 @@ while (length(oneLine <- readLines(con, 1, warn = FALSE)) > 0) {
 }
 close(con) ## It's important to close the connection when you are done
 ```
+
+Processing on file {{twitter}}.
 
 ```{r}
 q2_len <- 0
@@ -50,6 +79,7 @@ close(con) ## It's important to close the connection when you are done
 q4_ratio <- q4_hasLoveCount / q4_hasHateCount
 ```
 
+## Anser
 ```{r}
 q1_len
 q2_len

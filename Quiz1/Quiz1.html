@@ -128,10 +128,38 @@ $(document).ready(function () {
 </div>
 
 
+<div id="library" class="section level2">
+<h2>Library</h2>
 <pre class="r"><code>library(stringr)</code></pre>
-<pre class="r"><code>blogs &lt;- &quot;data/final/en_US/en_US.blogs.txt&quot;
-twitter &lt;- &quot;data/final/en_US/en_US.twitter.txt&quot;
-news &lt;- &quot;data/final/en_US/en_US.news.txt&quot;</code></pre>
+</div>
+<div id="download-data" class="section level2">
+<h2>Download Data</h2>
+<pre class="r"><code># Download Data
+rawDataFileUrl &lt;- &quot;https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip&quot;
+workingDataPath &lt;- file.path(&quot;..&quot;, &quot;data&quot;)
+downloadedZipfilePath &lt;- file.path(workingDataPath, &quot;Coursera-SwiftKey.zip&quot;)
+basePath &lt;- file.path(&quot;..&quot;, &quot;data&quot;, &quot;final&quot;, &quot;en_US&quot;)
+
+# Create working directory
+if(!file.exists(workingDataPath)) {
+        dir.create(workingDataPath)
+}
+# Download ziped file
+if(!file.exists(downloadedZipfilePath)) {
+        download.file(rawDataFileUrl, destfile = downloadedZipfilePath, method = &quot;curl&quot;)
+}
+# Unzip
+if(!file.exists(basePath)) {
+        unzip(zipfile = downloadedZipfilePath, exdir = workingDataPath)
+}
+
+blogs &lt;- file.path(basePath, &quot;en_US.blogs.txt&quot;)
+twitter &lt;- file.path(basePath, &quot;en_US.twitter.txt&quot;)
+news &lt;- file.path(basePath, &quot;en_US.news.txt&quot;)</code></pre>
+</div>
+<div id="processing" class="section level2">
+<h2>Processing</h2>
+<p>Processing on file {{blogs}}.</p>
 <pre class="r"><code>q1_len &lt;- file.info(blogs)$size / 1024 / 1024
 q3_maxLength &lt;- 0
 con &lt;- file(blogs, &quot;r&quot;)
@@ -140,6 +168,7 @@ while (length(oneLine &lt;- readLines(con, 1, warn = FALSE)) &gt; 0) {
         q3_maxLength &lt;- ifelse(q3_maxLength &lt; q3_len, q3_len, q3_maxLength)
 }
 close(con) ## It's important to close the connection when you are done</code></pre>
+<p>Processing on file {{twitter}}.</p>
 <pre class="r"><code>q2_len &lt;- 0
 q4_hasLoveCount &lt;- 0
 q4_hasHateCount &lt;- 0
@@ -157,6 +186,9 @@ while (length(oneLine &lt;- readLines(con, 1, warn = FALSE)) &gt; 0) {
 }
 close(con) ## It's important to close the connection when you are done
 q4_ratio &lt;- q4_hasLoveCount / q4_hasHateCount</code></pre>
+</div>
+<div id="anser" class="section level2">
+<h2>Anser</h2>
 <pre class="r"><code>q1_len</code></pre>
 <pre><code>## [1] 200.4242</code></pre>
 <pre class="r"><code>q2_len</code></pre>
@@ -169,6 +201,7 @@ q4_ratio &lt;- q4_hasLoveCount / q4_hasHateCount</code></pre>
 <pre><code>## [1] &quot;i know how you feel.. i have biostats on tuesday and i have yet to study =/&quot;</code></pre>
 <pre class="r"><code>q6_len</code></pre>
 <pre><code>## [1] 3</code></pre>
+</div>
 
 
 
