@@ -1,0 +1,60 @@
+---
+title: 'Quiz 1: Getting Started'
+author: "Koji"
+date: "2018/7/25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(stringr)
+```
+
+```{r}
+blogs <- "data/final/en_US/en_US.blogs.txt"
+twitter <- "data/final/en_US/en_US.twitter.txt"
+news <- "data/final/en_US/en_US.news.txt"
+```
+
+```{r}
+q1_len <- file.info(blogs)$size / 1024 / 1024
+q3_maxLength <- 0
+con <- file(blogs, "r")
+while (length(oneLine <- readLines(con, 1, warn = FALSE)) > 0) {
+        q3_len <- nchar(oneLine)
+        q3_maxLength <- ifelse(q3_maxLength < q3_len, q3_len, q3_maxLength)
+}
+close(con) ## It's important to close the connection when you are done
+```
+
+```{r}
+q2_len <- 0
+q4_hasLoveCount <- 0
+q4_hasHateCount <- 0
+q5_tweet <- c()
+q6_len <- 0
+con <- file(twitter, "r")
+while (length(oneLine <- readLines(con, 1, warn = FALSE)) > 0) {
+        q2_len <- q2_len + 1
+        q4_hasLoveCount <- q4_hasLoveCount + ifelse(str_detect(oneLine, "love"), 1, 0)
+        q4_hasHateCount <- q4_hasHateCount + ifelse(str_detect(oneLine, "hate"), 1, 0)
+        if(str_detect(oneLine, "biostats")){
+                q5_tweet <- c(q5_tweet, oneLine)
+        }
+        q6_len <- q6_len + ifelse(str_detect(oneLine, "^A computer once beat me at chess, but it was no match for me at kickboxing$"), 1, 0)
+}
+close(con) ## It's important to close the connection when you are done
+q4_ratio <- q4_hasLoveCount / q4_hasHateCount
+```
+
+```{r}
+q1_len
+q2_len
+q3_maxLength
+q4_ratio
+q5_tweet
+q6_len
+```
