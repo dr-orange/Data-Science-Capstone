@@ -67,12 +67,12 @@ c(blogs, twitter, news, badwords)
 ```
 
 First, loading in files using my poor implementation is below.
-```{r eval=FALSE, include=FALSE}
+```{r, results='hide'}
 tweets <- 0
 wordsTwitter <- 0
 sentencesTwitter <- 0
 con <- file(twitter, "r")
-while (length(oneLine <- readLines(con, 1, warn = FALSE)) > 0) {
+while (FALSE && length(oneLine <- readLines(con, 1, warn = FALSE)) > 0) {
         tweets <- tweets + 1
         if(tweets <= 10) {
                 print(oneLine)
@@ -284,19 +284,65 @@ featuresTweetsDfm2Gram <- textstat_frequency(dfm(subTweetsDfmNomarized2Gram), n 
 featuresTweetsDfm2Gram$feature <- with(featuresTweetsDfm2Gram, reorder(feature, -frequency))
 
 ggplot(featuresTweetsDfm2Gram, aes(x = feature, y = frequency)) +
-        geom_bar(stat = "identity") + 
         geom_point() + 
         theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
+3-Gram
+```{r, fig.width=14, fig.height=14}
+subTweetsDfmNomarized3Gram <- subTwitterCorpus %>% 
+        # nomarize words
+        tokens(remove_punct = TRUE,
+               remove_numbers = TRUE) %>%
+        # removing profanity and other words
+        tokens_remove(stopwords('english')) %>%
+        tokens_remove(profanity) %>%
+        tokens_ngrams(n = 3)
+topfeatures(dfm(subTweetsDfmNomarized3Gram), 20)
+```
+
+
+
+```{r, fig.height=14, fig.width=14}
+dfm(subTweetsDfmNomarized3Gram) %>%
+        textplot_wordcloud(min_count = 4,
+                           random_order = FALSE,
+                           max_words = 50,
+                           rotation = .25,
+                           color = RColorBrewer::brewer.pal(8, "Dark2"))
+```
+
+Frequency Plots
+```{r}
+featuresTweetsDfm3Gram <- textstat_frequency(dfm(subTweetsDfmNomarized3Gram), 60)
+
+# Sort by reverse frequency order
+featuresTweetsDfm3Gram$feature <- with(featuresTweetsDfm3Gram, reorder(feature, -frequency))
+
+ggplot(featuresTweetsDfm3Gram, aes(x = feature, y = frequency)) +
+        geom_point() + 
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+1-gram 90%tile:
 ```{r}
 featuresTweetsDfmFull <- textstat_frequency(dfm(subTweetsDfmNomarized))
 summary(featuresTweetsDfmFull)
 quantile(featuresTweetsDfmFull$frequency, c(0, .1, .5, .9, 1))
+```
 
+2-gram 90%tile:
+```{r}
 featuresTweetsDfm2GramFull <- textstat_frequency(dfm(subTweetsDfmNomarized2Gram))
 summary(featuresTweetsDfm2GramFull)
 quantile(featuresTweetsDfm2GramFull$frequency, c(0, .1, .5, .9, 1))
+```
+
+3-gram 90%tile:
+```{r}
+featuresTweetsDfm3GramFull <- textstat_frequency(dfm(subTweetsDfmNomarized3Gram))
+summary(featuresTweetsDfm3GramFull)
+quantile(featuresTweetsDfm3GramFull$frequency, c(0, .1, .5, .9, 1))
 ```
 
 ```{r}
@@ -323,33 +369,46 @@ _Questions to consider_
 
 Basic 2-gram model:
 ```{r}
-userInput <- "Good"
+nextWords2Gram <- function(input) {
+        featuresNextWord <- NULL
 
-nextWordDfm <- dfm(tokens_select(
-        subTweetsDfmNomarized2Gram, 
-        paste0("^", userInput, "_.*"),
-        valuetype ="regex"))
+        nextWordDfm <- dfm(
+                tokens_select(
+                        subTweetsDfmNomarized2Gram, 
+                        paste0("^", input, "_.*"),
+                        valuetype ="regex"))
+        
+        if(length(nextWordDfm) > 0) {
+                featuresNextWord <- textstat_frequency(nextWordDfm, n = 5)
+                featuresNextWord$feature <- 
+                        sapply(as.vector(featuresNextWord$feature), 
+                               function(x){
+                                       str_split(x, "_")[[1]][2]
+                               })
+                # Sort by reverse frequency order
+                featuresNextWord$feature <- with(featuresNextWord, reorder(feature, -frequency))
+        
+        } else {
+                # un-seen n-gram.
+                # backoff models?
+        }
 
-if(length(nextWordDfm) > 0) {
-        featuresNextWord <- textstat_frequency(nextWordDfm, n = 5)
-        featuresNextWord$feature <- 
-                sapply(as.vector(featuresNextWord$feature), 
-                       function(x){
-                               str_split(x, "_")[[1]][2]
-                       })
-        # Sort by reverse frequency order
-        featuresNextWord$feature <- with(featuresNextWord, reorder(feature, -frequency))
-
-} else {
-        # un-seen n-gram.
-        # backoff models?
+        featuresNextWord
 }
 ```
-Next word of the user inputs: `Good` is:
+
+Next word of `Looking` is:
 ```{r}
-ggplot(featuresNextWord, aes(x = feature, y = frequency)) +
+ggplot(nextWords2Gram("Looking"), aes(x = feature, y = frequency)) +
         geom_bar(stat = "identity") + 
-        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+        xlab("Next word")
+```
+
+Next word of `forward` is:
+```{r}
+ggplot(nextWords2Gram("forward"), aes(x = feature, y = frequency)) +
+        geom_bar(stat = "identity") + 
+        xlab("Next word")
 ```
 
 # References
