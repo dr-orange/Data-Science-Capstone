@@ -6,11 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-```{r, message=FALSE}
-set.seed(3301)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
 # Project Overview
@@ -36,24 +32,41 @@ _Review criteria_
 3. Has the data scientist made basic plots, such as histograms to illustrate features of the data?
 4. Was the report written in a brief, concise style, in a way that a non-data scientist manager could appreciate?
 
+```{r, message=FALSE, warning=FALSE}
+library(stringr)
+require(quanteda)
+require(readtext)
+library(R.utils)
+
+set.seed(3301)
+```
 
 # Task 0: Understanding the problem
 
 _Tasks to accomplish_
 
 1. Obtaining the data - Can you download the data and load/manipulate it in R?
+2. Familiarizing yourself with NLP and text mining - Learn about the basics of natural language processing and how it relates to the data science process you have learned in the Data Science Specialization.
 
-```{r, message=FALSE, cache=TRUE}
+_Questions to consider_
+
+1. What do the data look like?
+2. Where do the data come from?
+3. Can you think of any other data sources that might help you in this project?
+4. What are the common steps in natural language processing?
+5. What are some common issues in the analysis of text data?
+6. What is the relationship between NLP and the concepts you have learned in the Specialization?
+
+Dwonload data.
+```{r, message=FALSE}
 source("downloadData.R")
 
 attach(downloadData(file.path("..", "data")))
-c(blogs, twitter, news)
+c(blogs, twitter, news, badwords)
 ```
 
 First, loading in files using my poor implementation is below.
-```{r, cache=TRUE}
-library(stringr)
-
+```{r eval=FALSE, include=FALSE}
 tweets <- 0
 wordsTwitter <- 0
 sentencesTwitter <- 0
@@ -86,47 +99,46 @@ tweets
 wordsTwitter
 sentencesTwitter
 ```
-[1] 2360148
-[1] 29706404
-[1] 2818583
+```
+## [1] "How are you? Btw thanks for the RT. You gonna be in DC anytime soon? Love to see you. Been way, way too long."
+## [1] "When you meet someone special... you'll know. Your heart will beat more rapidly and you'll smile for no reason."
+## [1] "they've decided its more fun if I don't."
+## [1] "So Tired D; Played Lazer Tag & Ran A LOT D; Ughh Going To Sleep Like In 5 Minutes ;)"
+## [1] "Words from a complete stranger! Made my birthday even better :)"
+## [1] "First Cubs game ever! Wrigley field is gorgeous. This is perfect. Go Cubs Go!"
+## [1] "i no! i get another day off from skool due to the wonderful snow (: and THIS wakes me up...damn thing"
+## [1] "I'm coo... Jus at work hella tired r u ever in cali"
+## [1] "The new sundrop commercial ...hehe love at first sight"
+## [1] "we need to reconnect THIS WEEK"
 
+## [1] 2360148
+## [1] 29706404
+## [1] 2818583
+```
 
 Next, loading in files using the readtext package
-```{r, cache=TRUE}
-require(quanteda)
-require(readtext)
-
+```{r}
 tweetFile <- readtext(twitter)
 corpusTwitter <- corpus(tweetFile, cache = FALSE)
 summary(corpusTwitter)
 ```
 
-
-              Text  Types   Tokens Sentences
- en_US.twitter.txt 566951 36719658   2588551
-
-2. Familiarizing yourself with NLP and text mining - Learn about the basics of natural language processing and how it relates to the data science process you have learned in the Data Science Specialization.
-
-See refereces.
-
-
-_Questions to consider_
-
-1. What do the data look like?
-2. Where do the data come from?
-3. Can you think of any other data sources that might help you in this project?
-4. What are the common steps in natural language processing?
-5. What are some common issues in the analysis of text data?
-6. What is the relationship between NLP and the concepts you have learned in the Specialization?
-
-
-
 # Task 1: Getting and cleaning the data
 
 _Tasks to accomplish_
 
-Sub-Sampling.
+1. Tokenization - identifying appropriate tokens such as words, punctuation, and numbers. Writing a function that takes a file as input and returns a tokenized version of it.
+2. Profanity filtering - removing profanity and other words you do not want to predict.
 
+
+_Tips, tricks, and hints_
+
+1. **Loading the data in.** This dataset is fairly large. We emphasize that you don't necessarily need to load the entire dataset in to build your algorithms (see point 2 below). At least initially, you might want to use a smaller subset of the data. Reading in chunks or lines using R's readLines or scan functions can be useful. You can also loop over each line of text by embedding readLines within a for/while loop, but this may be slower than reading in large chunks at a time. Reading pieces of the file at a time will require the use of a file connection in R. For example, the following code could be used to read the first few lines of the English Twitter dataset:con <- file("en_US.twitter.txt", "r") readLines(con, 1) ## Read the first line of text readLines(con, 1) ## Read the next line of text readLines(con, 5) ## Read in the next 5 lines of text close(con) ## It's important to close the connection when you are done
+See the ?connections help page for more information.
+
+2. **Sampling.** To reiterate, to build models you don't need to load in and use all of the data. Often relatively few randomly selected rows or chunks need to be included to get an accurate approximation to results that would be obtained using all the data. Remember your inference class and how a representative sample can be used to infer facts about a population. You might want to create a separate sub-sample dataset by reading in a random subset of the original data and writing it out to a separate file. That way, you can store the sample and not have to recreate it every time. You can use the rbinom function to "flip a biased coin" to determine whether you sample a line of text or not.
+
+Sub-Sampling.
 ```{r}
 twitterSubSampling <- paste0(twitter, ".sub-sampling.txt")
 if(!file.exists(twitterSubSampling)) {
@@ -144,62 +156,22 @@ if(!file.exists(twitterSubSampling)) {
         close(conRead)
         close(conWrite)
 }
-```
-
-```{r}
-library(R.utils)
 
 subTweets <- as.numeric(countLines(twitterSubSampling))
 subTweets
 ```
 
-1. Tokenization - identifying appropriate tokens such as words, punctuation, and numbers. Writing a function that takes a file as input and returns a tokenized version of it.
-
+Tokenization.
 ```{r}
 subTweetFile <- readtext(twitterSubSampling)
 subTwitterCorpus <- corpus(subTweetFile, cache = FALSE)
 summary(subTwitterCorpus)
 ```
+
+Load bad words.
 ```{r}
-subTweetsDfm <- dfm(subTwitterCorpus)
-topfeatures(subTweetsDfm, 20)
+profanity <- readLines(badwords)
 ```
-```{r}
-subTweetsDfm %>% 
-        dfm_trim(min_termfreq = 10, verbose = FALSE) %>%
-        textplot_wordcloud(min_count = 6, random_order = FALSE, 
-                   rotation = .25,
-                   color = RColorBrewer::brewer.pal(8,"Dark2"))
-        
-
-```
-
-```{r}
-subTweetsDfmNomarized <- subTwitterCorpus %>% 
-        tokens(remove_punct = TRUE, remove_numbers = TRUE) %>%
-        dfm(remove = stopwords('english'))
-topfeatures(subTweetsDfmNomarized, 20)
-```
-```{r}
-subTweetsDfmNomarized %>%
-        dfm_trim(min_termfreq = 10, verbose = FALSE) %>%
-        textplot_wordcloud(min_count = 6,
-                           random_order = FALSE,
-                           max_words = 100,
-                           rotation = .25,
-                           color = RColorBrewer::brewer.pal(8,"Dark2"))
-```
-
-2. Profanity filtering - removing profanity and other words you do not want to predict.
-
-_Tips, tricks, and hints_
-
-1. **Loading the data in.** This dataset is fairly large. We emphasize that you don't necessarily need to load the entire dataset in to build your algorithms (see point 2 below). At least initially, you might want to use a smaller subset of the data. Reading in chunks or lines using R's readLines or scan functions can be useful. You can also loop over each line of text by embedding readLines within a for/while loop, but this may be slower than reading in large chunks at a time. Reading pieces of the file at a time will require the use of a file connection in R. For example, the following code could be used to read the first few lines of the English Twitter dataset:con <- file("en_US.twitter.txt", "r") readLines(con, 1) ## Read the first line of text readLines(con, 1) ## Read the next line of text readLines(con, 5) ## Read in the next 5 lines of text close(con) ## It's important to close the connection when you are done
-See the ?connections help page for more information.
-
-2. **Sampling.** To reiterate, to build models you don't need to load in and use all of the data. Often relatively few randomly selected rows or chunks need to be included to get an accurate approximation to results that would be obtained using all the data. Remember your inference class and how a representative sample can be used to infer facts about a population. You might want to create a separate sub-sample dataset by reading in a random subset of the original data and writing it out to a separate file. That way, you can store the sample and not have to recreate it every time. You can use the rbinom function to "flip a biased coin" to determine whether you sample a line of text or not.
-
-
 
 # Task 2: Exploratory Data Analysis
 
@@ -216,6 +188,51 @@ _Questions to consider_
 4. How do you evaluate how many of the words come from foreign languages?
 5. Can you think of a way to increase the coverage -- identifying words that may not be in the corpora or using a smaller number of words in the dictionary to cover the same number of phrases?
 
+Top 20.
+```{r}
+subTweetsDfm <- dfm(subTwitterCorpus)
+topfeatures(subTweetsDfm, 20)
+```
+
+Plot word cloud.
+```{r, fig.width=14, fig.height=14}
+subTweetsDfm %>% 
+        dfm_trim(min_termfreq = 10,
+                 verbose = FALSE) %>%
+        textplot_wordcloud(min_count = 6,
+                           random_order = FALSE, 
+                           rotation = .25,
+                           color = RColorBrewer::brewer.pal(8, "Dark2"))
+```
+
+Nomarize words.
+```{r}
+subTweetsDfmNomarized <- subTwitterCorpus %>% 
+        # nomarize words
+        tokens(remove_punct = TRUE,
+               remove_numbers = TRUE) %>%
+        # removing stop words
+        dfm(remove = stopwords('english')) %>%
+        # removing profanity and other words
+        dfm(remove = profanity)
+```
+
+Top 20 Nomarized words.
+```{r}
+topfeatures(subTweetsDfmNomarized, 20)
+```
+
+Plot word cloud.
+```{r, fig.width=14, fig.height=14}
+subTweetsDfmNomarized %>%
+        dfm_trim(min_termfreq = 10,
+                 verbose = FALSE) %>%
+        textplot_wordcloud(min_count = 6,
+                           random_order = FALSE,
+                           max_words = 100,
+                           rotation = .25,
+                           color = RColorBrewer::brewer.pal(8, "Dark2"))
+```
 
 # Task 3: Modeling
 
@@ -225,7 +242,7 @@ _Tasks to accomplish_
 2. Build a model to handle unseen n-grams - in some cases people will want to type a combination of words that does not appear in the corpora. Build a model to handle cases where a particular n-gram isn't observed.
 
 |Field|Unit|Sample sequence|1-gram sequence|2-gram sequence|3-gram sequence|
-|---|---|-----|-----|
+|-----|----|---------------|---------------|---------------|---------------|
 |Computational linguistics|word|… to be or not to be …|…, to, be, or, not, to, be, …|…, to be, be or, or not, not to, to be, …|…, to be or, be or not, or not to, not to be, …|
 
 _Questions to consider_
@@ -247,4 +264,4 @@ by Dan Jurafsky and Christopher Manning
 by Ingo Feinerer, Kurt Hornik, David Meyer, Wirtschaftsuniversita ̈t Wie
 - [Speech and Language Processing (3rd ed. draft)](https://web.stanford.edu/~jurafsky/slp3/)
 by Daniel Jurafsky, Stanford University, James H. Martin, University of Colorado at Boulder
-
+- [Useful Resources from Luis von Ahn's Research Group](https://www.cs.cmu.edu/~biglou/resources/)
