@@ -200,7 +200,7 @@ topfeatures(subTweetsDfm, 20)
 ```
 
 Plot word cloud.
-```{r, fig.width=14, fig.height=14}
+```{r, fig.width=14, fig.height=10}
 subTweetsDfm %>% 
         dfm_trim(min_termfreq = 10,
                  verbose = FALSE) %>%
@@ -265,7 +265,7 @@ topfeatures(dfm(subTweetsDfmNomarized2Gram), 20)
 
 
 
-```{r}
+```{r, fig.height=10}
 dfm(subTweetsDfmNomarized2Gram) %>%
         dfm_trim(min_termfreq = 10,
                  verbose = FALSE) %>%
@@ -323,7 +323,7 @@ _Questions to consider_
 
 Basic 2-gram model:
 ```{r}
-userInput <- "aGood"
+userInput <- "Good"
 
 nextWordDfm <- dfm(tokens_select(
         subTweetsDfmNomarized2Gram, 
@@ -340,13 +340,16 @@ if(length(nextWordDfm) > 0) {
         # Sort by reverse frequency order
         featuresNextWord$feature <- with(featuresNextWord, reorder(feature, -frequency))
 
-        ggplot(featuresNextWord, aes(x = feature, y = frequency)) +
-                geom_bar(stat = "identity") + 
-                theme(axis.text.x = element_text(angle = 90, hjust = 1))
 } else {
         # un-seen n-gram.
         # backoff models?
 }
+```
+Next word of the user inputs: `Good` is:
+```{r}
+ggplot(featuresNextWord, aes(x = feature, y = frequency)) +
+        geom_bar(stat = "identity") + 
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 # References
