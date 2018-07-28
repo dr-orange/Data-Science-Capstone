@@ -37,6 +37,7 @@ library(stringr)
 require(quanteda)
 require(readtext)
 library(R.utils)
+library(ggplot2)
 
 set.seed(3301)
 ```
@@ -188,6 +189,10 @@ _Questions to consider_
 4. How do you evaluate how many of the words come from foreign languages?
 5. Can you think of a way to increase the coverage -- identifying words that may not be in the corpora or using a smaller number of words in the dictionary to cover the same number of phrases?
 
+|Field|Unit|Sample sequence|1-gram sequence|2-gram sequence|3-gram sequence|
+|-----|----|---------------|---------------|---------------|---------------|
+|Computational linguistics|word|… to be or not to be …|…, to, be, or, not, to, be, …|…, to be, be or, or not, not to, to be, …|…, to be or, be or not, or not to, not to be, …|
+
 Top 20.
 ```{r}
 subTweetsDfm <- dfm(subTwitterCorpus)
@@ -211,20 +216,19 @@ subTweetsDfmNomarized <- subTwitterCorpus %>%
         # nomarize words
         tokens(remove_punct = TRUE,
                remove_numbers = TRUE) %>%
-        # removing stop words
-        dfm(remove = stopwords('english')) %>%
         # removing profanity and other words
-        dfm(remove = profanity)
+        tokens_remove(stopwords('english')) %>%
+        tokens_remove(profanity)
 ```
 
 Top 20 Nomarized words.
 ```{r}
-topfeatures(subTweetsDfmNomarized, 20)
+topfeatures(dfm(subTweetsDfmNomarized), 20)
 ```
 
 Plot word cloud.
-```{r, fig.width=14, fig.height=14}
-subTweetsDfmNomarized %>%
+```{r, fig.width=10, fig.height=10}
+dfm(subTweetsDfmNomarized) %>%
         dfm_trim(min_termfreq = 10,
                  verbose = FALSE) %>%
         textplot_wordcloud(min_count = 6,
@@ -234,16 +238,78 @@ subTweetsDfmNomarized %>%
                            color = RColorBrewer::brewer.pal(8, "Dark2"))
 ```
 
+Frequency Plots
+```{r}
+featuresTweetsDfm <- textstat_frequency(dfm(subTweetsDfmNomarized), n = 80)
+
+# Sort by reverse frequency order
+featuresTweetsDfm$feature <- with(featuresTweetsDfm, reorder(feature, -frequency))
+
+ggplot(featuresTweetsDfm, aes(x = feature, y = frequency)) +
+        geom_point() + 
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+2-Gram
+```{r, fig.width=14, fig.height=14}
+subTweetsDfmNomarized2Gram <- subTwitterCorpus %>% 
+        # nomarize words
+        tokens(remove_punct = TRUE,
+               remove_numbers = TRUE) %>%
+        # removing profanity and other words
+        tokens_remove(stopwords('english')) %>%
+        tokens_remove(profanity) %>%
+        tokens_ngrams(n = 2)
+topfeatures(dfm(subTweetsDfmNomarized2Gram), 20)
+```
+
+
+
+```{r}
+dfm(subTweetsDfmNomarized2Gram) %>%
+        dfm_trim(min_termfreq = 10,
+                 verbose = FALSE) %>%
+        textplot_wordcloud(min_count = 6,
+                           random_order = FALSE,
+                           max_words = 100,
+                           rotation = .25,
+                           color = RColorBrewer::brewer.pal(8, "Dark2"))
+```
+
+Frequency Plots
+```{r}
+featuresTweetsDfm2Gram <- textstat_frequency(dfm(subTweetsDfmNomarized2Gram), n = 80)
+
+# Sort by reverse frequency order
+featuresTweetsDfm2Gram$feature <- with(featuresTweetsDfm2Gram, reorder(feature, -frequency))
+
+ggplot(featuresTweetsDfm2Gram, aes(x = feature, y = frequency)) +
+        geom_bar(stat = "identity") + 
+        geom_point() + 
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+```{r}
+featuresTweetsDfmFull <- textstat_frequency(dfm(subTweetsDfmNomarized))
+summary(featuresTweetsDfmFull)
+quantile(featuresTweetsDfmFull$frequency, c(0, .1, .5, .9, 1))
+
+featuresTweetsDfm2GramFull <- textstat_frequency(dfm(subTweetsDfmNomarized2Gram))
+summary(featuresTweetsDfm2GramFull)
+quantile(featuresTweetsDfm2GramFull$frequency, c(0, .1, .5, .9, 1))
+```
+
+```{r}
+ntoken(subTweetsDfmNomarized)
+ntype(subTweetsDfmNomarized)
+```
+
 # Task 3: Modeling
 
 _Tasks to accomplish_
 
 1. Build basic n-gram model - using the exploratory analysis you performed, build a basic [n-gram model](https://en.wikipedia.org/wiki/N-gram) for predicting the next word based on the previous 1, 2, or 3 words.
 2. Build a model to handle unseen n-grams - in some cases people will want to type a combination of words that does not appear in the corpora. Build a model to handle cases where a particular n-gram isn't observed.
-
-|Field|Unit|Sample sequence|1-gram sequence|2-gram sequence|3-gram sequence|
-|-----|----|---------------|---------------|---------------|---------------|
-|Computational linguistics|word|… to be or not to be …|…, to, be, or, not, to, be, …|…, to be, be or, or not, not to, to be, …|…, to be or, be or not, or not to, not to be, …|
 
 _Questions to consider_
 
@@ -254,6 +320,34 @@ _Questions to consider_
 5. How do you evaluate whether your model is any good?
 6. How can you use [backoff models](https://en.wikipedia.org/wiki/Katz%27s_back-off_model) to estimate the probability of unobserved n-grams?
 
+
+Basic 2-gram model:
+```{r}
+userInput <- "aGood"
+
+nextWordDfm <- dfm(tokens_select(
+        subTweetsDfmNomarized2Gram, 
+        paste0("^", userInput, "_.*"),
+        valuetype ="regex"))
+
+if(length(nextWordDfm) > 0) {
+        featuresNextWord <- textstat_frequency(nextWordDfm, n = 5)
+        featuresNextWord$feature <- 
+                sapply(as.vector(featuresNextWord$feature), 
+                       function(x){
+                               str_split(x, "_")[[1]][2]
+                       })
+        # Sort by reverse frequency order
+        featuresNextWord$feature <- with(featuresNextWord, reorder(feature, -frequency))
+
+        ggplot(featuresNextWord, aes(x = feature, y = frequency)) +
+                geom_bar(stat = "identity") + 
+                theme(axis.text.x = element_text(angle = 90, hjust = 1))
+} else {
+        # un-seen n-gram.
+        # backoff models?
+}
+```
 
 # References
 - [Data Science Specialization - Capstone | Community Site](http://datasciencespecialization.github.io/capstone/)
