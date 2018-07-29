@@ -132,7 +132,7 @@ sentencesTwitter
 It takes a long time to calculate, so re-implement it using the package.
 
 Loading files using the readtext package.
-```{r corpus, cache=TRUE}
+```{r corpus}
 tweetFile <- readtext(twitter)
 corpusTwitter <- corpus(tweetFile, cache = FALSE)
 summary(corpusTwitter)
@@ -392,97 +392,6 @@ _Questions to consider_
 
 # Implement scratch Katz's back-off model.
 
-Basic 2-gram model:
-```{r}
-nextWords2Gram <- function(input, outputs = 5, k = 0) {
-        # k is the least important of the parameters. It is usually chosen to be 0.
-        # However, empirical testing may find better values for k.
-        featuresNextWord <- NULL
-
-        # extract n-gram that starts with input
-        nextWordDfm <- dfm(tokens_select(subTweetsDfmNomarized2Gram,
-                                         phrase(paste0(
-                                                 input, "_*"
-                                         ))))
-
-        if (length(nextWordDfm) > k) {
-                # top n frequency stat
-                featuresNextWord <-
-                        textstat_frequency(nextWordDfm, n = outputs)
-
-                # human readable outputs
-                featuresNextWord$feature <-
-                        sapply(as.vector(featuresNextWord$feature),
-                               function(x) {
-                                       str_split(x, "_")[[1]][2]
-                               })
-                
-                # Sort by reverse frequency order
-                featuresNextWord$feature <-
-                        with(featuresNextWord,
-                             reorder(feature,-frequency))
-                
-        } else {
-        }
-        
-        featuresNextWord
-}
-
-```
-
-Next word of `Looking` is:
-```{r}
-ggplot(nextWords2Gram("Looking"), aes(x = feature, y = frequency)) +
-        geom_bar(stat = "identity") + 
-        xlab("Next word")
-```
-
-Next word of `forward` is:
-```{r}
-ggplot(nextWords2Gram("forward"), aes(x = feature, y = frequency)) +
-        geom_bar(stat = "identity") + 
-        xlab("Next word")
-```
-
-
-# I went to be
-I went
-```{r}
-ggplot(nextWords2Gram("went"), aes(x = feature, y = frequency)) +
-        geom_bar(stat = "identity") + 
-        xlab("Next word")
-```
-
-I went to
-```{r}
-ggplot(nextWords2Gram("to"), aes(x = feature, y = frequency)) +
-        geom_bar(stat = "identity") + 
-        xlab("Next word")
-```
-
-I went to be
-```{r}
-ggplot(nextWords2Gram("be"), aes(x = feature, y = frequency)) +
-        geom_bar(stat = "identity") + 
-        xlab("Next word")
-```
-
-I went to be a
-```{r}
-ggplot(nextWords2Gram("a"), aes(x = feature, y = frequency)) +
-        geom_bar(stat = "identity") + 
-        xlab("Next word")
-```
-
-I went to be a great
-```{r}
-ggplot(nextWords2Gram("great"), aes(x = feature, y = frequency)) +
-        geom_bar(stat = "identity") + 
-        xlab("Next word")
-```
-
-I went to be a great day ...
-
 # Good Turing estimation
 ```{r}
 simpleGoodTuring <- function(r, Nr) {
@@ -534,21 +443,135 @@ simpleGoodTuring <- function(r, Nr) {
 }
 ```
 
-# 3-gram model:
+Basic 2-gram model:
 ```{r}
-NrTbl <- textstat_frequency(dfm(subTweetsDfmNomarized3Gram)) %>%
+NrTbl2 <- textstat_frequency(dfm(subTweetsDfmNomarized2Gram)) %>%
         select(frequency) %>%
         mutate(freqOfFrequency = 1) %>%
         group_by(frequency) %>%
         summarise_all(sum)
 
-Nr <- NrTbl$freqOfFrequency
-r <- NrTbl$frequency
+Nr2 <- NrTbl2$freqOfFrequency
+r2 <- NrTbl2$frequency
 
-sgt <- simpleGoodTuring(r, Nr)
+sgt2 <- simpleGoodTuring(r2, Nr2)
+
+dBigram <- function(freq) {
+        sgt2$r[as.character(freq)] / freq
+}
+
+nextWords2Gram <- function(input, outputs = 3, k = 0) {
+        # k is the least important of the parameters. It is usually chosen to be 0.
+        # However, empirical testing may find better values for k.
+        featuresNextWord <- NULL
+
+        # extract n-gram that starts with input
+        nextWordDfm <- dfm(tokens_select(subTweetsDfmNomarized2Gram,
+                                         phrase(paste0(
+                                                 input, "_*"
+                                         ))))
+
+        if (length(nextWordDfm) > k) {
+                prevWordDfm <- dfm(tokens_select(subTweetsDfm,
+                                                 phrase(input)))
+                prevWordFreq <- textstat_frequency(prevWordDfm)$frequency
+
+                # data frame
+                featuresNextWord <-
+                        textstat_frequency(nextWordDfm) %>%
+                        mutate(p_bo = dBigram(frequency) * frequency / prevWordFreq)
+
+                # human readable outputs
+                featuresNextWord$feature <-
+                        sapply(as.vector(featuresNextWord$feature),
+                               function(x) {
+                                       str_split(x, "_")[[1]][2]
+                               })
+                
+                # Sort by reverse frequency order
+                featuresNextWord$feature <-
+                        with(featuresNextWord,
+                             reorder(feature,-p_bo))
+                
+        } else {
+#                beta <- 
+#                nextWords2Gram(biGram, outputs = outputs, k = k)
+        }
+
+        featuresNextWord %>% slice(1:outputs)
+}
+
+```
+
+Next word of `Looking` is:
+```{r}
+ggplot(nextWords2Gram("Looking"), aes(x = feature, y = p_bo)) +
+        geom_bar(stat = "identity") + 
+        xlab("Next word")
+```
+
+Next word of `forward` is:
+```{r}
+ggplot(nextWords2Gram("forward"), aes(x = feature, y = frequency)) +
+        geom_bar(stat = "identity") + 
+        xlab("Next word")
+```
+
+
+# I went to be
+I went
+```{r}
+ggplot(nextWords2Gram("went"), aes(x = feature, y = frequency)) +
+        geom_bar(stat = "identity") + 
+        xlab("Next word")
+```
+
+I went to
+```{r}
+ggplot(nextWords2Gram("to"), aes(x = feature, y = frequency)) +
+        geom_bar(stat = "identity") + 
+        xlab("Next word")
+```
+
+I went to be
+```{r}
+ggplot(nextWords2Gram("be"), aes(x = feature, y = frequency)) +
+        geom_bar(stat = "identity") + 
+        xlab("Next word")
+```
+
+I went to be a
+```{r}
+ggplot(nextWords2Gram("a"), aes(x = feature, y = frequency)) +
+        geom_bar(stat = "identity") + 
+        xlab("Next word")
+```
+
+I went to be a great
+```{r}
+ggplot(nextWords2Gram("great"), aes(x = feature, y = frequency)) +
+        geom_bar(stat = "identity") + 
+        xlab("Next word")
+```
+
+I went to be a great day ...
+
+
+# 3-gram model:
+```{r}
+NrTbl3 <- textstat_frequency(dfm(subTweetsDfmNomarized3Gram)) %>%
+        select(frequency) %>%
+        mutate(freqOfFrequency = 1) %>%
+        group_by(frequency) %>%
+        summarise_all(sum)
+
+Nr3 <- NrTbl3$freqOfFrequency
+r3 <- NrTbl3$frequency
+
+sgt3 <- simpleGoodTuring(r3, Nr3)
 
 dTrigram <- function(freq) {
-        sgt$r[as.character(freq)] / freq
+        sgt3$r[as.character(freq)] / freq
 }
 
 nextWords <- function(input, ngram = 3, outputs = 3, k = 0) {
@@ -593,10 +616,11 @@ nextWords <- function(input, ngram = 3, outputs = 3, k = 0) {
                              reorder(feature,-p_bo))
                 
         } else {
-#                beta <- 
+                beta <- 1
+                featuresNextWord <- nextWords2Gram(biGram, outputs = outputs, k = k)
         }
         
-        featuresNextWord %>% slice(1:5)
+        featuresNextWord %>% slice(1:outputs)
 }
 
 ```
