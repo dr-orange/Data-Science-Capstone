@@ -494,8 +494,19 @@ nextWords2Gram <- function(input, outputs = 3, k = 0) {
                              reorder(feature,-p_bo))
                 
         } else {
-#                beta <- 
-#                nextWords2Gram(biGram, outputs = outputs, k = k)
+                trigramDfm <- textstat_frequency(dfm(subTweetsDfmNomarized2Gram)) %>%
+                        filter(frequency > k)
+                prevWordDfm <- dfm(tokens_select(subTweetsDfmNomarized2Gram,
+                                                 phrase(triGram)))
+                prevWordFreq <- textstat_frequency(prevWordDfm)$frequency
+
+                # data frame
+                featuresNextWord <-
+                        trigramDfm %>%
+                        mutate(p_bo = dBigram(frequency) * frequency / prevWordFreq)
+
+                beta <- 1 - sum(featuresNextWord$freqency)
+                featuresNextWord <- nextWords2Gram(biGram, outputs = outputs, k = k)
         }
 
         featuresNextWord %>% slice(1:outputs)
@@ -577,10 +588,9 @@ dTrigram <- function(freq) {
 nextWords <- function(input, ngram = 3, outputs = 3, k = 0) {
         # k is the least important of the parameters. It is usually chosen to be 0.
         # However, empirical testing may find better values for k.
-
         inputs <- str_split(input, "\\s+")[[1]]
         inputsSize <- length(inputs)
-        if (inputsSize < ngram - 1) { return() }
+#        if (inputsSize < ngram - 1) { return() }
         triGram <- paste(inputs[inputsSize - 1],
                          inputs[inputsSize],
                          sep = "_")
@@ -616,7 +626,18 @@ nextWords <- function(input, ngram = 3, outputs = 3, k = 0) {
                              reorder(feature,-p_bo))
                 
         } else {
-                beta <- 1
+                trigramDfm <- textstat_frequency(dfm(subTweetsDfmNomarized3Gram)) %>%
+                        filter(frequency > k)
+                prevWordDfm <- dfm(tokens_select(subTweetsDfmNomarized2Gram,
+                                                 phrase(triGram)))
+                prevWordFreq <- textstat_frequency(prevWordDfm)$frequency
+
+                # data frame
+                featuresNextWord <-
+                        trigramDfm %>%
+                        mutate(p_bo = dBigram(frequency) * frequency / prevWordFreq)
+
+                beta <- 1 - sum(featuresNextWord$freqency)
                 featuresNextWord <- nextWords2Gram(biGram, outputs = outputs, k = k)
         }
         
@@ -632,6 +653,11 @@ ggplot(nextWords("I went to be"), aes(x = feature, y = p_bo)) +
         xlab("Next word") + ylab("P_bo")
 ```
 
+```{r}
+ggplot(nextWords("I I I"), aes(x = feature, y = p_bo)) +
+        geom_bar(stat = "identity") + 
+        xlab("Next word") + ylab("P_bo")
+```
 
 # References
 - [Data Science Specialization - Capstone | Community Site](http://datasciencespecialization.github.io/capstone/)
