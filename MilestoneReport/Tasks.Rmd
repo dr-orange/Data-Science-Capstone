@@ -66,7 +66,8 @@ Dwonload data.
 ```{r, message=FALSE}
 source("downloadData.R")
 
-attach(downloadData(file.path("..", "data")))
+dataPath <- file.path("..", "data")
+attach(downloadData(dataPath))
 c(blogs, twitter, news, badwords)
 ```
 
@@ -132,10 +133,20 @@ sentencesTwitter
 It takes a long time to calculate, so re-implement it using the package.
 
 Loading files using the **readtext** package.
-```{r corpus}
+```{r corpus, eval=FALSE}
 tweetFile <- readtext(twitter)
 corpusTwitter <- corpus(tweetFile, cache = FALSE)
 summary(corpusTwitter)
+```
+```
+## Corpus consisting of 1 document:
+## 
+##               Text  Types   Tokens Sentences
+##  en_US.twitter.txt 566951 36719658   2588551
+## 
+## Source: /Users/warhol/Documents/!work/Data-Science-Capstone/MilestoneReport/* on x86_64 by warhol
+## Created: Mon Jul 30 20:36:18 2018
+## Notes: 
 ```
 
 # Task 1: Getting and cleaning the data
@@ -156,7 +167,7 @@ See the ?connections help page for more information.
 ## Sub-Sampling
 ```{r sampling}
 tweets <- as.numeric(countLines(twitter))
-twitterSubSampling <- paste0(twitter, ".sub-sampling.txt")
+twitterSubSampling <- file.path(dataPath, "sub-sample.twitter.txt")
 if(!file.exists(twitterSubSampling)) {
         subSamplingRate <- .01
         flipABiasedCoin <- rbinom(tweets, size = 1, prob = subSamplingRate)
@@ -174,14 +185,36 @@ if(!file.exists(twitterSubSampling)) {
 }
 
 subTweets <- as.numeric(countLines(twitterSubSampling))
-subTweets
+
+twitterTrain <- file.path(dataPath, "train.twitter.txt")
+twitterTest <- file.path(dataPath, "test.twitter.txt")
+if(!file.exists(twitterTrain) || !file.exists(twitterTest)) {
+        trainRate <- .7
+        flipABiasedCoin <- rbinom(subTweets, size = 1, prob = trainRate)
+        conRead <- file(twitterSubSampling, "r")
+        conWriteTrain <- file(twitterTrain, "w")
+        conWriteTest <- file(twitterTest, "w")
+        len <- 0
+        while (length(oneLine <- readLines(conRead, 1, warn = FALSE)) > 0) {
+                len <- len + 1
+                if(flipABiasedCoin[len] == 1) {
+                        writeLines(oneLine, conWriteTrain)
+                } else {
+                        writeLines(oneLine, conWriteTest)
+                }
+        }
+        close(conRead)
+        close(conWriteTrain)
+        close(conWriteTest)
+}
+
+trainTweets <- as.numeric(countLines(twitterTrain))
 ```
 
 ## Tokenization
 ```{r tokenize}
-subTweetFile <- readtext(twitterSubSampling)
-subTwitterCorpus <- corpus(subTweetFile, cache = FALSE)
-summary(subTwitterCorpus)
+twitterCorpus <- corpus(readtext(twitterTrain), cache = FALSE)
+summary(twitterCorpus)
 ```
 
 ## Load Bad Words
@@ -210,7 +243,7 @@ _Questions to consider_
 
 ## Top 20
 ```{r top20_1}
-subTweetsDfm <- subTwitterCorpus %>% 
+subTweetsDfm <- twitterCorpus %>% 
         # nomarize words
         tokens(remove_punct = TRUE,
                remove_numbers = TRUE) %>%
@@ -234,7 +267,7 @@ dfm(subTweetsDfm) %>%
 
 ## Nomarize Words
 ```{r nomarize_1}
-subTweetsDfmNomarized <- subTwitterCorpus %>% 
+subTweetsDfmNomarized <- twitterCorpus %>% 
         # nomarize words
         tokens(remove_punct = TRUE,
                remove_numbers = TRUE) %>%
@@ -274,7 +307,7 @@ ggplot(featuresTweetsDfm, aes(x = feature, y = frequency)) +
 
 ## 2-Gram Top 20.
 ```{r, fig.width=14, fig.height=14}
-subTweetsDfmNomarized2Gram <- subTwitterCorpus %>% 
+subTweetsDfmNomarized2Gram <- twitterCorpus %>% 
         # nomarize words
         tokens(remove_punct = TRUE,
                remove_numbers = TRUE) %>%
@@ -312,7 +345,7 @@ ggplot(featuresTweetsDfm2Gram, aes(x = feature, y = frequency)) +
 
 ## 3-Gram Top 20
 ```{r, fig.width=14, fig.height=14}
-subTweetsDfmNomarized3Gram <- subTwitterCorpus %>% 
+subTweetsDfmNomarized3Gram <- twitterCorpus %>% 
         # nomarize words
         tokens(remove_punct = TRUE,
                remove_numbers = TRUE) %>%
