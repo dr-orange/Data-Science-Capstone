@@ -77,7 +77,7 @@ tweets <- 0
 wordsTwitter <- 0
 sentencesTwitter <- 0
 con <- file(twitter, "r")
-while (FALSE && length(oneLine <- readLines(con, 1, warn = FALSE)) > 0) {
+while (length(oneLine <- readLines(con, 1, warn = FALSE)) > 0) {
         # Count tweet
         tweets <- tweets + 1
         # Show first 10 tweet
