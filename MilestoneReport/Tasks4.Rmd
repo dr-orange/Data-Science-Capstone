@@ -1,0 +1,433 @@
+---
+title: "Tasks 1,2,3 - Data Sciencd Capstone"
+author: "Koji"
+date: "2018/7/30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+Sys.setlocale(category = "LC_TIME", locale = "C")
+```
+
+# Project Overview
+
+Around the world, people are spending an increasing amount of time on their mobile devices for email, social networking, banking and a whole range of other activities. But typing on mobile devices can be a serious pain. SwiftKey, our corporate partner in this capstone, builds a smart keyboard that makes it easier for people to type on their mobile devices. One cornerstone of their smart keyboard is predictive text models. When someone types:
+
+I went to the
+
+the keyboard presents three options for what the next word might be. For example, the three words might be gym, store, restaurant. In this capstone you will work on understanding and building predictive text models like those used by SwiftKey.
+
+```{r, message=FALSE, warning=FALSE}
+library(stringr)
+library(dplyr)
+library(quanteda)
+library(readtext)
+library(R.utils)
+library(ggplot2)
+
+set.seed(3301)
+```
+
+## Download Data
+```{r}
+downloadData <- function(workingDataPath = file.path("data")) {
+        # Download Data
+        rawDataFileUrl <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+        downloadedZipfilePath <- file.path(workingDataPath, "Coursera-SwiftKey.zip")
+        badWordsFileUrl <- "https://www.cs.cmu.edu/~biglou/resources/bad-words.txt"
+        badWordsFilePath <- file.path(workingDataPath, "bad-words.txt")
+        basePath <- file.path(workingDataPath, "final", "en_US")
+        
+        # Create working directory
+        if(!file.exists(workingDataPath)) {
+                dir.create(workingDataPath)
+        }
+        # Download ziped file
+        if(!file.exists(downloadedZipfilePath)) {
+                download.file(rawDataFileUrl, destfile = downloadedZipfilePath, method = "curl")
+        }
+        # Download Bad Words Text File
+        if(!file.exists(badWordsFilePath)) {
+                download.file(badWordsFileUrl, destfile = badWordsFilePath, method = "curl")
+        }
+        # Unzip
+        if(!file.exists(basePath)) {
+                unzip(zipfile = downloadedZipfilePath, exdir = workingDataPath)
+        }
+        
+        list(blogs = file.path(basePath, "en_US.blogs.txt"), 
+             twitter = file.path(basePath, "en_US.twitter.txt"),
+             news = file.path(basePath, "en_US.news.txt"),
+             badwords = badWordsFilePath)
+}
+
+dataPath <- file.path("..", "data")
+attach(downloadData(dataPath))
+c(blogs, twitter, news, badwords)
+```
+
+## Sub-Sampling
+Since the original data is very large and takes time to analyse, it samples to 1% of data.
+```{r sampling}
+subSample <- function(input, output) {
+        if(!file.exists(output)) {
+                subSamplingRate <- .01
+                fileLines <- as.numeric(countLines(input))
+                flipABiasedCoin <- rbinom(fileLines, size = 1, prob = subSamplingRate)
+                conRead <- file(input, "r")
+                conWrite <- file(output, "w")
+                len <- 0
+                while (length(oneLine <- readLines(conRead, 1, warn = FALSE)) > 0) {
+                        len <- len + 1
+                        if(flipABiasedCoin[len] == 1) {
+                                writeLines(oneLine, conWrite)
+                        }
+                }
+                close(conRead)
+                close(conWrite)
+        }
+        return(as.numeric(countLines(output)))
+}
+
+blogsSubSampling <- file.path(dataPath, "sub-sample.blogs.txt")
+subBlogs <- subSample(blogs, blogsSubSampling)
+
+twitterSubSampling <- file.path(dataPath, "sub-sample.twitter.txt")
+subTweets <- subSample(twitter, twitterSubSampling)
+
+newsSubSampling <- file.path(dataPath, "sub-sample.news.txt")
+subNews <- subSample(news, newsSubSampling)
+
+c(subBlogs, subTweets, subNews)
+```
+
+## Train and Test Data
+Divide the sampled data into a training set and a test set at a ratio of 7: 3.
+```{r traindata}
+devideDataset <- function(input, outputTrain, outputTest) {
+        if(!file.exists(outputTrain) || !file.exists(outputTest)) {
+                trainRate <- .7
+                fileLines <- as.numeric(countLines(input))
+                flipABiasedCoin <- rbinom(fileLines, size = 1, prob = trainRate)
+                conRead <- file(input, "r")
+                conWriteTrain <- file(outputTrain, "w")
+                conWriteTest <- file(outputTest, "w")
+                len <- 0
+                while (length(oneLine <- readLines(conRead, 1, warn = FALSE)) > 0) {
+                        len <- len + 1
+                        if(flipABiasedCoin[len] == 1) {
+                                writeLines(oneLine, conWriteTrain)
+                        } else {
+                                writeLines(oneLine, conWriteTest)
+                        }
+                }
+                close(conRead)
+                close(conWriteTrain)
+                close(conWriteTest)
+        }
+        return(as.numeric(countLines(outputTrain)))
+}
+
+blogsTrain <- paste0(blogsSubSampling, ".train.txt")
+blogsTest <- paste0(blogsSubSampling, ".test.txt")
+twitterTrain <- paste0(twitterSubSampling, ".train.txt")
+twitterTest <- paste0(twitterSubSampling, ".test.txt")
+newsTrain <- paste0(newsSubSampling, ".train.txt")
+newsTest <- paste0(newsSubSampling, ".test.txt")
+
+trainBlogs <- devideDataset(blogsSubSampling, blogsTrain, blogsTest)
+trainTweets <- devideDataset(twitterSubSampling, twitterTrain, twitterTest)
+trainNews <- devideDataset(newsSubSampling, newsTrain, newsTest)
+
+c(trainBlogs, trainTweets, trainNews)
+```
+
+## Load Data
+Loading files using the **readtext** package and make corpus using the **quanteda** package.
+```{r tokenize}
+blogsCorpus <- readtext(blogsTrain) %>% 
+        corpus()
+twitterCorpus <- readtext(twitterTrain) %>% 
+        corpus()
+newsCorpus <- readtext(newsTrain) %>% 
+        corpus()
+```
+
+## Load Bad Words
+```{r badwords}
+profanity <- readLines(badwords)
+```
+
+## 1-Gram
+```{r top20_1}
+twitterToken <- twitterCorpus %>% 
+        # nomarize words
+        tokens(remove_punct = TRUE,
+               remove_numbers = TRUE,
+               remove_url = TRUE,
+               include_docvars = FALSE) %>%
+        # removing profanity and other words
+        tokens_remove(profanity)
+
+twitterDfm <- twitterToken %>% 
+        dfm()
+```
+
+## 2-Gram
+```{r, fig.width=14, fig.height=14}
+twitterDfm2Gram <- twitterToken %>%
+        tokens_ngrams(n = 2) %>%
+        dfm()
+```
+
+## 3-Gram
+```{r, fig.width=14, fig.height=14}
+twitterDfm3Gram <- twitterToken %>%
+        tokens_ngrams(n = 3) %>%
+        dfm()
+```
+
+# Modeling
+
+Concept implementation.
+
+## Good Turing Estimation
+```{r}
+simpleGoodTuring <- function(r, Nr, sd = 1.65) {
+        # number of words
+        N <- sum(r * Nr)
+        d <- diff(r)
+    
+        ## Turing estimate
+        # turing estimate index
+        ti <- which(d == 1)
+        # discount coefficients of Turing estimate
+        dct <- numeric(length(r))
+        dct[ti] <- (r[ti] + 1) / r[ti] * c(Nr[-1], 0)[ti] / Nr[ti]
+
+        ## Linear Good-Turing estimate
+        Zr <- Nr / c(1, 0.5 * (d[-1] + d[-length(d)]), d[length(d)])
+        f <- lsfit(log(r), log(Zr))
+        coef <- f$coef
+        # corrected term frequency
+        rc <- r * (1 + 1 / r)^(1 + coef[2])  
+        # discount coefficients of Linear Good-Turing estimate
+        dclgt <- rc / r
+
+        ## make switch from Turing to LGT estimates
+        # standard deviation of term frequencies between 'r' and 'rc' (?)
+        rsd <- rep(1,length(r))        
+        rsd[ti] <- (seq_len(length(r))[ti] + 1) / Nr[ti] * sqrt(Nr[ti + 1] * (1 + Nr[ti + 1] / Nr[ti]))
+        
+        dc <- dct
+        for (i in 1:length(r)) {
+            if (abs(dct[i] - dclgt[i]) * r[i] / rsd[i] <= sd) {
+                dc[i:length(dc)] <- dclgt[i:length(dc)]
+                break
+            }
+        }
+
+        ## renormalize the probabilities for observed objects
+        # summation of probabilities
+        sump <- sum(dc * r * Nr) / N
+        # renormalized discount coefficients
+        dcr <- (1 - Nr[1] / N) * dc / sump
+        
+        # term frequency
+        tf <- c(Nr[1] / N, r * dcr)
+        p <- c(Nr[1] / N, r * dcr / N)
+        names(p) <- names(tf) <- c(0, r)        
+        
+        list(p = p, r = tf)
+}
+```
+
+## PreProcess Smoothing parameter
+```{r}
+sgtFactory <- function() {
+        NrTbl1 <- textstat_frequency(twitterDfm) %>%
+                select(frequency) %>%
+                mutate(freqOfFrequency = 1) %>%
+                group_by(frequency) %>%
+                summarise_all(sum)
+        
+        SGT1 <- simpleGoodTuring(NrTbl1$frequency, NrTbl1$freqOfFrequency)
+        
+        NrTbl2 <- textstat_frequency(twitterDfm2Gram) %>%
+                select(frequency) %>%
+                mutate(freqOfFrequency = 1) %>%
+                group_by(frequency) %>%
+                summarise_all(sum)
+        
+        SGT2 <- simpleGoodTuring(NrTbl2$frequency, NrTbl2$freqOfFrequency)
+
+        NrTbl3 <- textstat_frequency(twitterDfm3Gram) %>%
+                select(frequency) %>%
+                mutate(freqOfFrequency = 1) %>%
+                group_by(frequency) %>%
+                summarise_all(sum)
+        
+        SGT3 <- simpleGoodTuring(NrTbl3$frequency, NrTbl3$freqOfFrequency)
+        
+        c(
+                dUnigram = function(freq) {
+                        SGT1$p[as.character(freq)]
+                },
+                dBigram = function(freq) {
+                        SGT2$r[as.character(freq)] / freq
+                },
+                dTrigram = function(freq) {
+                        SGT3$r[as.character(freq)] / freq
+                }
+        )
+}
+
+SGT <- sgtFactory()
+```
+
+## Parameters using our predict model
+```{r}
+predictModel <- c(SGT = SGT, 
+                  trigram = twitterDfm3Gram,
+                  bigram = twitterDfm2Gram,
+                  unigram = twitterDfm)
+# save(predictModel, file = "predictModel.rda")
+```
+
+## 3-gram Model using Katz's back-off
+```{r}
+nextWords <- function(input, predictModel, outputs = 3, k = 0) {
+        # k is the least important of the parameters. It is usually chosen to be 0.
+        # However, empirical testing may find better values for k.
+        inputs <- str_split(input, "\\s+")[[1]]
+        inputsSize <- length(inputs)
+        if (inputsSize > 1) {
+                preTriGram <- paste(inputs[inputsSize - 1],
+                                 inputs[inputsSize],
+                                 sep = "_")
+
+                nextWordDfm <- dfm_select(predictModel$trigram, 
+                                          paste0(preTriGram, "_*"))
+        } else {
+                if (inputs == "") { return() }
+                nextWordDfm <- NULL
+        }
+        preBiGram <- inputs[inputsSize]
+
+        # extract n-gram that starts with input
+        featuresNextWord <- NULL
+
+        if (length(nextWordDfm) > k) {
+                prevWordDfm <- dfm_select(predictModel$bigram,
+                                          phrase(preTriGram))
+
+                prevWordFreq <- textstat_frequency(prevWordDfm)$frequency
+
+                # data frame
+                featuresNextWord <-
+                        textstat_frequency(nextWordDfm) %>%
+                        mutate(p_bo = predictModel$SGT.dTrigram(frequency) * frequency / prevWordFreq)
+
+                # human readable outputs
+                featuresNextWord$feature <-
+                        sapply(as.vector(featuresNextWord$feature),
+                               function(x) {
+                                       str_split(x, "_")[[1]][3]
+                               })
+                
+                # Sort by reverse frequency order
+                featuresNextWord$feature <-
+                        with(featuresNextWord,
+                             reorder(feature,-p_bo))
+                
+        } else {
+                nextWordDfm <- dfm_select(predictModel$bigram,
+                                          paste0(preBiGram, "_*"))
+                
+                if (length(nextWordDfm) > k) {
+                        prevWordDfm <- dfm_select(predictModel$unigram,
+                                                  phrase(preBiGram))
+                        prevWordFreq <- textstat_frequency(prevWordDfm)$frequency
+        
+                        # data frame
+                        featuresNextWord <-
+                                textstat_frequency(nextWordDfm) %>%
+                                mutate(p_bo = predictModel$SGT.dBigram(frequency) * frequency / prevWordFreq)
+        
+                        # human readable outputs
+                        featuresNextWord$feature <-
+                                sapply(as.vector(featuresNextWord$feature),
+                                       function(x) {
+                                               str_split(x, "_")[[1]][2]
+                                       })
+                        
+                        # Sort by reverse frequency order
+                        featuresNextWord$feature <-
+                                with(featuresNextWord,
+                                     reorder(feature,-p_bo))
+                        
+                } else {
+                        nextWordDfm <- twitterDfm
+                        featuresNextWord <-
+                                textstat_frequency(nextWordDfm) %>%
+                                mutate(p_bo = predictModel$SGT.dUnigram(frequency))
+        
+                        # Sort by reverse frequency order
+                        featuresNextWord$feature <-
+                                with(featuresNextWord,
+                                     reorder(feature,-p_bo))
+                                
+                }
+        }
+        
+        featuresNextWord %>% slice(1:outputs)
+}
+
+```
+
+## I went to be
+```{r}
+# load("predictModel.rda")
+ggplot(nextWords("I went to be", predictModel), aes(x = feature, y = p_bo)) +
+        geom_bar(stat = "identity") + 
+        xlab("Predicted next word") + ylab("P_bo")
+```
+
+```{r}
+system.time(nextWords("I went to be", predictModel))
+```
+
+
+# Task 4: Prediction Model
+
+The goal of this exercise is to build and evaluate your first predictive model. You will use the n-gram and backoff models you built in previous tasks to build and evaluate your predictive model. The goal is to make the model efficient and accurate.
+
+_Tasks to accomplish_
+
+1. Build a predictive model based on the previous data modeling steps - you may combine the models in any way you think is appropriate.
+2. Evaluate the model for efficiency and accuracy - use timing software to evaluate the computational complexity of your model. Evaluate the model accuracy using different metrics like perplexity, accuracy at the first word, second word, and third word.
+
+_Questions to consider_
+
+
+1. How does the model perform for different choices of the parameters and size of the model?
+2. How much does the model slow down for the performance you gain?
+3. Does perplexity correlate with the other measures of accuracy?
+4. Can you reduce the size of the model (number of parameters) without reducing performance?
+
+
+
+# References
+- [Data Science Specialization - Capstone | Community Site](http://datasciencespecialization.github.io/capstone/)
+- [Quick Start Guide • quanteda](http://docs.quanteda.io/articles/pkgdown/quickstart.html)
+- [Lecture Slides from the Stanford Coursera course | Natural Language Processing](https://web.stanford.edu/~jurafsky/NLPCourseraSlides.html)
+by Dan Jurafsky and Christopher Manning
+- [Text Mining Infrastructure in R | Journal of Statistical Software](https://www.jstatsoft.org/article/view/v025i05/v25i05.pdf)
+by Ingo Feinerer, Kurt Hornik, David Meyer, Wirtschaftsuniversita ̈t Wie
+- [Speech and Language Processing (3rd ed. draft)](https://web.stanford.edu/~jurafsky/slp3/)
+by Daniel Jurafsky, Stanford University, James H. Martin, University of Colorado at Boulder
+- [Useful Resources from Luis von Ahn's Research Group](https://www.cs.cmu.edu/~biglou/resources/)
+- [https://abicky.net/2011/01/30/204409/](https://abicky.net/2011/01/30/204409/)
+- [Good-Turing smoothing without tears (1995)](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.110.8518)
+by William A. Gale

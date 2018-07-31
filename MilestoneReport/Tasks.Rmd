@@ -1,5 +1,5 @@
 ---
-title: "Tasks - Data Sciencd Capstone"
+title: "Tasks 1,2,3 - Data Sciencd Capstone"
 author: "Koji"
 date: "2018/7/30"
 output: html_document

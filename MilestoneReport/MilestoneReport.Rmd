@@ -447,8 +447,14 @@ sgtFactory <- function() {
 }
 
 SGT <- sgtFactory()
+```
 
-predictModel <- c(SGT=SGT, trigram=twitterDfm3Gram, bigram=twitterDfm2Gram, unigram=twitterDfm)
+## Parameters using our predict model
+```{r}
+predictModel <- c(SGT = SGT, 
+                  trigram = twitterDfm3Gram,
+                  bigram = twitterDfm2Gram,
+                  unigram = twitterDfm)
 # save(predictModel, file = "predictModel.rda")
 ```
 
