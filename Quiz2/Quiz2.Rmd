@@ -153,7 +153,7 @@ twitterCorpus <- readtext(twitterTrain) %>%
 newsCorpus <- readtext(newsTrain) %>% 
         corpus()
 
-courseCorpus <- blogsCorpus + twitterCorpus + newsCorpus
+projectCorpus <- blogsCorpus + twitterCorpus + newsCorpus
 ```
 
 ## Load Bad Words
@@ -163,7 +163,7 @@ profanity <- readLines(badwords)
 
 ## 1-Gram
 ```{r top20_1}
-courseToken <- courseCorpus %>% 
+projectToken <- projectCorpus %>% 
         # nomarize words
         tokens(remove_punct = TRUE,
                remove_numbers = TRUE,
@@ -172,20 +172,20 @@ courseToken <- courseCorpus %>%
         # removing profanity and other words
         tokens_remove(profanity)
 
-courseDfm <- courseToken %>% 
+projectDfm <- projectToken %>% 
         dfm()
 ```
 
 ## 2-Gram
 ```{r, fig.width=14, fig.height=14}
-courseDfm2Gram <- courseToken %>%
+projectDfm2Gram <- projectToken %>%
         tokens_ngrams(n = 2) %>%
         dfm()
 ```
 
 ## 3-Gram
 ```{r, fig.width=14, fig.height=14}
-courseDfm3Gram <- courseToken %>%
+projectDfm3Gram <- projectToken %>%
         tokens_ngrams(n = 3) %>%
         dfm()
 ```
@@ -248,7 +248,7 @@ simpleGoodTuring <- function(r, Nr, sd = 1.65) {
 ## PreProcess Smoothing parameter
 ```{r}
 sgtFactory <- function() {
-        NrTbl1 <- textstat_frequency(courseDfm) %>%
+        NrTbl1 <- textstat_frequency(projectDfm) %>%
                 select(frequency) %>%
                 mutate(freqOfFrequency = 1) %>%
                 group_by(frequency) %>%
@@ -256,7 +256,7 @@ sgtFactory <- function() {
         
         SGT1 <- simpleGoodTuring(NrTbl1$frequency, NrTbl1$freqOfFrequency)
         
-        NrTbl2 <- textstat_frequency(courseDfm2Gram) %>%
+        NrTbl2 <- textstat_frequency(projectDfm2Gram) %>%
                 select(frequency) %>%
                 mutate(freqOfFrequency = 1) %>%
                 group_by(frequency) %>%
@@ -264,7 +264,7 @@ sgtFactory <- function() {
         
         SGT2 <- simpleGoodTuring(NrTbl2$frequency, NrTbl2$freqOfFrequency)
 
-        NrTbl3 <- textstat_frequency(courseDfm3Gram) %>%
+        NrTbl3 <- textstat_frequency(projectDfm3Gram) %>%
                 select(frequency) %>%
                 mutate(freqOfFrequency = 1) %>%
                 group_by(frequency) %>%
@@ -291,9 +291,9 @@ SGT <- sgtFactory()
 ## Parameters using our predict model
 ```{r}
 predictModel <- c(SGT = SGT, 
-                  trigram = courseDfm3Gram,
-                  bigram = courseDfm2Gram,
-                  unigram = courseDfm)
+                  trigram = projectDfm3Gram,
+                  bigram = projectDfm2Gram,
+                  unigram = projectDfm)
 # save(predictModel, file = "predictModel.rda")
 ```
 
@@ -370,7 +370,7 @@ nextWords <- function(input, predictModel, outputs = 3, k = 0) {
                                      reorder(feature,-p_bo))
                         
                 } else {
-                        nextWordDfm <- courseDfm
+                        nextWordDfm <- projectDfm
                         featuresNextWord <-
                                 textstat_frequency(nextWordDfm) %>%
                                 mutate(p_bo = predictModel$SGT.dUnigram(frequency))
