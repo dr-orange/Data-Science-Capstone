@@ -1,7 +1,7 @@
 ---
-title: "Tasks 1,2,3 - Data Sciencd Capstone"
+title: "Quiz2"
 author: "Koji"
-date: "2018/7/30"
+date: "2018/7/31"
 output: html_document
 ---
 
@@ -72,7 +72,7 @@ Since the original data is very large and takes time to analyse, it samples to 1
 ```{r sampling}
 subSample <- function(input, output) {
         if(!file.exists(output)) {
-                subSamplingRate <- .01
+                subSamplingRate <- .02
                 fileLines <- as.numeric(countLines(input))
                 flipABiasedCoin <- rbinom(fileLines, size = 1, prob = subSamplingRate)
                 conRead <- file(input, "r")
@@ -152,6 +152,8 @@ twitterCorpus <- readtext(twitterTrain) %>%
         corpus()
 newsCorpus <- readtext(newsTrain) %>% 
         corpus()
+
+courseCorpus <- blogsCorpus + twitterCorpus + newsCorpus
 ```
 
 ## Load Bad Words
@@ -161,7 +163,7 @@ profanity <- readLines(badwords)
 
 ## 1-Gram
 ```{r top20_1}
-twitterToken <- twitterCorpus %>% 
+courseToken <- courseCorpus %>% 
         # nomarize words
         tokens(remove_punct = TRUE,
                remove_numbers = TRUE,
@@ -170,20 +172,20 @@ twitterToken <- twitterCorpus %>%
         # removing profanity and other words
         tokens_remove(profanity)
 
-twitterDfm <- twitterToken %>% 
+courseDfm <- courseToken %>% 
         dfm()
 ```
 
 ## 2-Gram
 ```{r, fig.width=14, fig.height=14}
-twitterDfm2Gram <- twitterToken %>%
+courseDfm2Gram <- courseToken %>%
         tokens_ngrams(n = 2) %>%
         dfm()
 ```
 
 ## 3-Gram
 ```{r, fig.width=14, fig.height=14}
-twitterDfm3Gram <- twitterToken %>%
+courseDfm3Gram <- courseToken %>%
         tokens_ngrams(n = 3) %>%
         dfm()
 ```
@@ -246,7 +248,7 @@ simpleGoodTuring <- function(r, Nr, sd = 1.65) {
 ## PreProcess Smoothing parameter
 ```{r}
 sgtFactory <- function() {
-        NrTbl1 <- textstat_frequency(twitterDfm) %>%
+        NrTbl1 <- textstat_frequency(courseDfm) %>%
                 select(frequency) %>%
                 mutate(freqOfFrequency = 1) %>%
                 group_by(frequency) %>%
@@ -254,7 +256,7 @@ sgtFactory <- function() {
         
         SGT1 <- simpleGoodTuring(NrTbl1$frequency, NrTbl1$freqOfFrequency)
         
-        NrTbl2 <- textstat_frequency(twitterDfm2Gram) %>%
+        NrTbl2 <- textstat_frequency(courseDfm2Gram) %>%
                 select(frequency) %>%
                 mutate(freqOfFrequency = 1) %>%
                 group_by(frequency) %>%
@@ -262,7 +264,7 @@ sgtFactory <- function() {
         
         SGT2 <- simpleGoodTuring(NrTbl2$frequency, NrTbl2$freqOfFrequency)
 
-        NrTbl3 <- textstat_frequency(twitterDfm3Gram) %>%
+        NrTbl3 <- textstat_frequency(courseDfm3Gram) %>%
                 select(frequency) %>%
                 mutate(freqOfFrequency = 1) %>%
                 group_by(frequency) %>%
@@ -289,9 +291,9 @@ SGT <- sgtFactory()
 ## Parameters using our predict model
 ```{r}
 predictModel <- c(SGT = SGT, 
-                  trigram = twitterDfm3Gram,
-                  bigram = twitterDfm2Gram,
-                  unigram = twitterDfm)
+                  trigram = courseDfm3Gram,
+                  bigram = courseDfm2Gram,
+                  unigram = courseDfm)
 # save(predictModel, file = "predictModel.rda")
 ```
 
@@ -368,7 +370,7 @@ nextWords <- function(input, predictModel, outputs = 3, k = 0) {
                                      reorder(feature,-p_bo))
                         
                 } else {
-                        nextWordDfm <- twitterDfm
+                        nextWordDfm <- courseDfm
                         featuresNextWord <-
                                 textstat_frequency(nextWordDfm) %>%
                                 mutate(p_bo = predictModel$SGT.dUnigram(frequency))
@@ -386,48 +388,57 @@ nextWords <- function(input, predictModel, outputs = 3, k = 0) {
 
 ```
 
-## I went to be
+
+### 1.
 ```{r}
-# load("predictModel.rda")
-ggplot(nextWords("I went to be", predictModel), aes(x = feature, y = p_bo)) +
-        geom_bar(stat = "identity") + 
-        xlab("Predicted next word") + ylab("P_bo")
+nextWords("The guy in front of me just bought a pound of bacon, a bouquet, and a case of", predictModel)
 ```
 
+### 2.
 ```{r}
-system.time(nextWords("I went to be", predictModel))
+nextWords("You're the reason why I smile everyday. Can you follow me please? It would mean the", predictModel)
+```
+OK
+
+### 3.
+```{r}
+nextWords("Hey sunshine, can you follow me and make me the", predictModel)
 ```
 
+### 4.
+```{r}
+nextWords("Very early observations on the Bills game: Offense still struggling but the", predictModel)
+```
 
-# Task 4: Prediction Model
+### 5.
+```{r}
+nextWords("Go on a romantic date at the", predictModel)
+```
 
-The goal of this exercise is to build and evaluate your first predictive model. You will use the n-gram and backoff models you built in previous tasks to build and evaluate your predictive model. The goal is to make the model efficient and accurate.
+### 6.
+```{r}
+nextWords("Well I'm pretty sure my granny has some old bagpipes in her garage I'll dust them off and be on my", predictModel)
+```
+OK
 
-_Tasks to accomplish_
+### 7.
+```{r}
+nextWords("Ohhhhh #PointBreak is on tomorrow. Love that film and haven't seen it in quite some", predictModel)
+```
+OK
 
-1. Build a predictive model based on the previous data modeling steps - you may combine the models in any way you think is appropriate.
-2. Evaluate the model for efficiency and accuracy - use timing software to evaluate the computational complexity of your model. Evaluate the model accuracy using different metrics like perplexity, accuracy at the first word, second word, and third word.
+### 8.
+```{r}
+nextWords("After the ice bucket challenge Louis will push his long wet hair out of his eyes with his little", predictModel)
+```
 
-_Questions to consider_
+### 9.
+```{r}
+nextWords("Be grateful for the good times and keep the faith during the", predictModel)
+```
 
-
-1. How does the model perform for different choices of the parameters and size of the model?
-2. How much does the model slow down for the performance you gain?
-3. Does perplexity correlate with the other measures of accuracy?
-4. Can you reduce the size of the model (number of parameters) without reducing performance?
-
-
-
-# References
-- [Data Science Specialization - Capstone | Community Site](http://datasciencespecialization.github.io/capstone/)
-- [Quick Start Guide • quanteda](http://docs.quanteda.io/articles/pkgdown/quickstart.html)
-- [Lecture Slides from the Stanford Coursera course | Natural Language Processing](https://web.stanford.edu/~jurafsky/NLPCourseraSlides.html)
-by Dan Jurafsky and Christopher Manning
-- [Text Mining Infrastructure in R | Journal of Statistical Software](https://www.jstatsoft.org/article/view/v025i05/v25i05.pdf)
-by Ingo Feinerer, Kurt Hornik, David Meyer, Wirtschaftsuniversita ̈t Wie
-- [Speech and Language Processing (3rd ed. draft)](https://web.stanford.edu/~jurafsky/slp3/)
-by Daniel Jurafsky, Stanford University, James H. Martin, University of Colorado at Boulder
-- [Useful Resources from Luis von Ahn's Research Group](https://www.cs.cmu.edu/~biglou/resources/)
-- [https://abicky.net/2011/01/30/204409/](https://abicky.net/2011/01/30/204409/)
-- [Good-Turing smoothing without tears (1995)](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.110.8518)
-by William A. Gale
+### 10.
+```{r}
+nextWords("If this isn't the cutest thing you've ever seen, then you must be", predictModel)
+```
+OK
