@@ -134,9 +134,9 @@ It takes a long time to calculate, so re-implement it using the package.
 
 Loading files using the **readtext** package.
 ```{r corpus, eval=FALSE}
-tweetFile <- readtext(twitter)
-corpusTwitter <- corpus(tweetFile, cache = FALSE)
-summary(corpusTwitter)
+corpusTwitter <- readtext(twitter) %>%
+        corpus() %>%
+        summary()
 ```
 ```
 ## Corpus consisting of 1 document:
@@ -185,7 +185,10 @@ if(!file.exists(twitterSubSampling)) {
 }
 
 subTweets <- as.numeric(countLines(twitterSubSampling))
+```
 
+## Train and Test Data
+```{r traindata}
 twitterTrain <- file.path(dataPath, "train.twitter.txt")
 twitterTest <- file.path(dataPath, "test.twitter.txt")
 if(!file.exists(twitterTrain) || !file.exists(twitterTest)) {
@@ -214,7 +217,8 @@ trainTweets
 
 ## Tokenization
 ```{r tokenize}
-twitterCorpus <- corpus(readtext(twitterTrain), cache = FALSE)
+twitterCorpus <- readtext(twitterTrain) %>% 
+        corpus()
 summary(twitterCorpus)
 ```
 
@@ -247,42 +251,44 @@ _Questions to consider_
 twitterToken <- twitterCorpus %>% 
         # nomarize words
         tokens(remove_punct = TRUE,
-               remove_numbers = TRUE) %>%
+               remove_numbers = TRUE,
+               remove_url = TRUE,
+               include_docvars = FALSE) %>%
         # removing profanity and other words
-        # tokens_remove(stopwords('english')) %>%
         tokens_remove(profanity)
-twitterDfm <- dfm(twitterToken)
-topfeatures(dfm(twitterToken), 20)
+
+twitterDfm <- twitterToken %>% 
+        dfm()
+twitterDfm %>%
+        topfeatures(20)
 ```
 
 ## Plot Word Cloud
 ```{r wordcloud_1, fig.width=14, fig.height=10}
-dfm(twitterToken) %>% 
+twitterDfm %>% 
         textplot_wordcloud(min_count = 6,
                            random_order = FALSE, 
                            rotation = .25,
                            color = RColorBrewer::brewer.pal(8, "Dark2"))
 ```
 
-## Nomarize Words
+## Nomarize Words (Remove Stop Word)
 ```{r nomarize_1}
-twitterTokenNoStopWord <- twitterCorpus %>% 
-        # nomarize words
-        tokens(remove_punct = TRUE,
-               remove_numbers = TRUE) %>%
-        # removing profanity and other words
+twitterDfmNoStopWord <- twitterToken %>% 
+        # removing stop words
         tokens_remove(stopwords('english')) %>%
-        tokens_remove(profanity)
+        dfm()
 ```
 
 ## Top 20 Nomarized Words
 ```{r top20_2}
-topfeatures(dfm(twitterTokenNoStopWord), 20)
+twitterDfmNoStopWord %>%
+        topfeatures(20)
 ```
 
-## Plot Word Cloud
+## Plot Normarized Word Cloud
 ```{r wordcloud_2, fig.width=10, fig.height=10}
-dfm(twitterTokenNoStopWord) %>%
+twitterDfmNoStopWord %>%
         textplot_wordcloud(min_count = 6,
                            random_order = FALSE,
                            max_words = 100,
@@ -290,24 +296,28 @@ dfm(twitterTokenNoStopWord) %>%
                            color = RColorBrewer::brewer.pal(8, "Dark2"))
 ```
 
-## Frequency Plots
+## Normarized Word Frequency Plots
 ```{r}
-featuresTwitter <- textstat_frequency(dfm(twitterTokenNoStopWord), n = 80)
+featuresTwitter <- twitterDfmNoStopWord %>%
+        textstat_frequency(n = 80)
 
 # Sort by reverse frequency order
-featuresTwitter$feature <- with(featuresTwitter, reorder(feature, -frequency))
+featuresTwitter$feature <- featuresTwitter %>% 
+        with(reorder(feature, -frequency))
 
-ggplot(featuresTwitter, aes(x = feature, y = frequency)) +
+featuresTwitter %>%
+        ggplot(aes(x = feature, y = frequency)) +
         geom_point() + 
         theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 ## 2-Gram Top 20.
 ```{r, fig.width=14, fig.height=14}
-twitterToken2Gram <- twitterToken %>%
-        tokens_ngrams(n = 2)
-twitterDfm2Gram <- dfm(twitterToken2Gram)
-topfeatures(twitterDfm2Gram, 20)
+twitterDfm2Gram <- twitterToken %>%
+        tokens_ngrams(n = 2) %>%
+        dfm()
+twitterDfm2Gram %>%
+        topfeatures(20)
 ```
 
 ## 2-Gram Word Cloud
@@ -322,22 +332,26 @@ twitterDfm2Gram %>%
 
 ## 2-Gram Frequency Plots
 ```{r}
-featuresTwitter2Gram <- textstat_frequency(twitterDfm2Gram, n = 80)
+featuresTwitter2Gram <- twitterDfm2Gram %>%
+        textstat_frequency(n = 80)
 
 # Sort by reverse frequency order
-featuresTwitter2Gram$feature <- with(featuresTwitter2Gram, reorder(feature, -frequency))
+featuresTwitter2Gram$feature <- featuresTwitter2Gram %>%
+        with(reorder(feature, -frequency))
 
-ggplot(featuresTwitter2Gram, aes(x = feature, y = frequency)) +
+featuresTwitter2Gram %>%
+        ggplot(aes(x = feature, y = frequency)) +
         geom_point() + 
         theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 ## 3-Gram Top 20
 ```{r, fig.width=14, fig.height=14}
-twitterToken3Gram <- twitterToken %>%
-        tokens_ngrams(n = 3)
-twitterDfm3Gram <- dfm(twitterToken3Gram)
-topfeatures(twitterDfm3Gram, 20)
+twitterDfm3Gram <- twitterToken %>%
+        tokens_ngrams(n = 3) %>%
+        dfm()
+twitterDfm3Gram %>%
+        topfeatures(20)
 ```
 
 ## 3-Gram Word Cloud
@@ -352,37 +366,40 @@ twitterDfm3Gram %>%
 
 ## 3-Gram Frequency Plots
 ```{r}
-featuresTwitter3Gram <- textstat_frequency(twitterDfm3Gram, 60)
+featuresTwitter3Gram <- twitterDfm3Gram %>%
+        textstat_frequency(60)
 
 # Sort by reverse frequency order
-featuresTwitter3Gram$feature <- with(featuresTwitter3Gram, reorder(feature, -frequency))
+featuresTwitter3Gram$feature <- featuresTwitter3Gram %>% 
+        with(reorder(feature, -frequency))
 
-ggplot(featuresTwitter3Gram, aes(x = feature, y = frequency)) +
-        geom_point() + 
+featuresTwitter3Gram %>%
+        ggplot(aes(x = feature, y = frequency)) +
+        geom_point() +
         theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 ## 1-gram 90%tile:
 ```{r}
-featuresTwitterFull <- textstat_frequency(dfm(twitterTokenNoStopWord))
+featuresTwitterFull <- twitterDfmNoStopWord %>% textstat_frequency()
 summary(featuresTwitterFull)
 quantile(featuresTwitterFull$frequency, c(0, .1, .5, .9, 1))
 ```
 
 ## 2-gram 90%tile:
 ```{r}
-featuresTwitter2GramFull <- textstat_frequency(twitterDfm2Gram)
+featuresTwitter2GramFull <- twitterDfm2Gram %>% textstat_frequency()
 summary(featuresTwitter2GramFull)
 quantile(featuresTwitter2GramFull$frequency, c(0, .1, .5, .9, 1))
 ```
 
 ## 3-gram 90%tile:
 ```{r}
-featuresTwitter3GramFull <- textstat_frequency(twitterDfm3Gram)
+featuresTwitter3GramFull <- twitterDfm3Gram %>% textstat_frequency()
 summary(featuresTwitter3GramFull)
 quantile(featuresTwitter3GramFull$frequency, c(0, .1, .5, .9, 1))
 ```
-Seems like Zipf's law.
+Seems to be in accordance with the Zipf's law.
 
 # Task 3: Modeling
 
@@ -402,7 +419,7 @@ _Questions to consider_
 
 ## Good Turing Estimation
 ```{r}
-simpleGoodTuring <- function(r, Nr, sd = 1.96) { # sd = 1.65
+simpleGoodTuring <- function(r, Nr, sd = 1.65) {
         # number of words
         N <- sum(r * Nr)
         d <- diff(r)
@@ -502,10 +519,9 @@ nextWords <- function(input, outputs = 3, k = 0) {
                 preTriGram <- paste(inputs[inputsSize - 1],
                                  inputs[inputsSize],
                                  sep = "_")
-                nextWordDfm <- dfm(tokens_select(twitterToken3Gram,
-                                                 phrase(paste0(
-                                                         preTriGram, "_*"
-                                                 ))))
+
+                nextWordDfm <- dfm_select(twitterDfm3Gram, 
+                                          paste0(preTriGram, "_*"))
         } else {
                 if (inputs == "") { return() }
                 nextWordDfm <- NULL
@@ -516,8 +532,9 @@ nextWords <- function(input, outputs = 3, k = 0) {
         featuresNextWord <- NULL
 
         if (length(nextWordDfm) > k) {
-                prevWordDfm <- dfm(tokens_select(twitterToken2Gram,
-                                                 phrase(preTriGram)))
+                prevWordDfm <- dfm_select(twitterDfm2Gram,
+                                          phrase(preTriGram))
+
                 prevWordFreq <- textstat_frequency(prevWordDfm)$frequency
 
                 # data frame
@@ -538,14 +555,12 @@ nextWords <- function(input, outputs = 3, k = 0) {
                              reorder(feature,-p_bo))
                 
         } else {
-                nextWordDfm <- dfm(tokens_select(twitterToken2Gram,
-                                                 phrase(paste0(
-                                                         preBiGram, "_*"
-                                                 ))))
+                nextWordDfm <- dfm_select(twitterDfm2Gram,
+                                          paste0(preBiGram, "_*"))
                 
                 if (length(nextWordDfm) > k) {
-                        prevWordDfm <- dfm(tokens_select(twitterToken,
-                                                         phrase(preBiGram)))
+                        prevWordDfm <- dfm_select(twitterDfm,
+                                                  phrase(preBiGram))
                         prevWordFreq <- textstat_frequency(prevWordDfm)$frequency
         
                         # data frame
@@ -608,3 +623,5 @@ by Ingo Feinerer, Kurt Hornik, David Meyer, Wirtschaftsuniversita ̈t Wie
 by Daniel Jurafsky, Stanford University, James H. Martin, University of Colorado at Boulder
 - [Useful Resources from Luis von Ahn's Research Group](https://www.cs.cmu.edu/~biglou/resources/)
 - [https://abicky.net/2011/01/30/204409/](https://abicky.net/2011/01/30/204409/)
+- [Good-Turing smoothing without tears (1995)](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.110.8518)
+by William A. Gale
