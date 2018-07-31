@@ -39,3 +39,4 @@ rsconnect/
 /memo/
 
 .Rproj.user
+*.rda

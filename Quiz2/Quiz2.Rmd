@@ -334,11 +334,11 @@ nextWords <- function(input, predictModel, outputs = 3, k = 0) {
                         mutate(p_bo = predictModel$SGT.dTrigram(frequency) * frequency / prevWordFreq)
 
                 # human readable outputs
-##                featuresNextWord$feature <-
-##                        sapply(as.vector(featuresNextWord$feature),
-##                               function(x) {
-##                                       str_split(x, "_")[[1]][3]
-##                               })
+                featuresNextWord$feature <-
+                        sapply(as.vector(featuresNextWord$feature),
+                               function(x) {
+                                       str_split(x, "_")[[1]][3]
+                               })
                 
                 # Sort by reverse frequency order
                 featuresNextWord$feature <-
@@ -360,11 +360,11 @@ nextWords <- function(input, predictModel, outputs = 3, k = 0) {
                                 mutate(p_bo = predictModel$SGT.dBigram(frequency) * frequency / prevWordFreq)
         
                         # human readable outputs
-#                        featuresNextWord$feature <-
-#                                sapply(as.vector(featuresNextWord$feature),
-#                                       function(x) {
-#                                               str_split(x, "_")[[1]][2]
-#                                       })
+                        featuresNextWord$feature <-
+                                sapply(as.vector(featuresNextWord$feature),
+                                       function(x) {
+                                               str_split(x, "_")[[1]][2]
+                                       })
                         
                         # Sort by reverse frequency order
                         featuresNextWord$feature <-
