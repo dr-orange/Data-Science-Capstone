@@ -26,7 +26,7 @@ library(readtext)
 library(R.utils)
 library(ggplot2)
 
-set.seed(3301)
+set.seed(33010)
 ```
 
 ## Download Data
@@ -72,7 +72,7 @@ Since the original data is very large and takes time to analyse, it samples to 1
 ```{r sampling}
 subSample <- function(input, output) {
         if(!file.exists(output)) {
-                subSamplingRate <- .01
+                subSamplingRate <- .05
                 fileLines <- as.numeric(countLines(input))
                 flipABiasedCoin <- rbinom(fileLines, size = 1, prob = subSamplingRate)
                 conRead <- file(input, "r")
@@ -294,7 +294,9 @@ predictModel <- c(SGT = SGT,
                   trigram = projectDfm3Gram,
                   bigram = projectDfm2Gram,
                   unigram = projectDfm)
-# save(predictModel, file = "predictModel.rda")
+
+save(predictModel, file = "predictModel.rda")
+remove(projectDfm3Gram, projectDfm2Gram, projectDfm, SGT)
 ```
 
 ## 3-gram Model using Katz's back-off
@@ -332,11 +334,11 @@ nextWords <- function(input, predictModel, outputs = 3, k = 0) {
                         mutate(p_bo = predictModel$SGT.dTrigram(frequency) * frequency / prevWordFreq)
 
                 # human readable outputs
-                featuresNextWord$feature <-
-                        sapply(as.vector(featuresNextWord$feature),
-                               function(x) {
-                                       str_split(x, "_")[[1]][3]
-                               })
+##                featuresNextWord$feature <-
+##                        sapply(as.vector(featuresNextWord$feature),
+##                               function(x) {
+##                                       str_split(x, "_")[[1]][3]
+##                               })
                 
                 # Sort by reverse frequency order
                 featuresNextWord$feature <-
@@ -358,11 +360,11 @@ nextWords <- function(input, predictModel, outputs = 3, k = 0) {
                                 mutate(p_bo = predictModel$SGT.dBigram(frequency) * frequency / prevWordFreq)
         
                         # human readable outputs
-                        featuresNextWord$feature <-
-                                sapply(as.vector(featuresNextWord$feature),
-                                       function(x) {
-                                               str_split(x, "_")[[1]][2]
-                                       })
+#                        featuresNextWord$feature <-
+#                                sapply(as.vector(featuresNextWord$feature),
+#                                       function(x) {
+#                                               str_split(x, "_")[[1]][2]
+#                                       })
                         
                         # Sort by reverse frequency order
                         featuresNextWord$feature <-
@@ -388,57 +390,67 @@ nextWords <- function(input, predictModel, outputs = 3, k = 0) {
 
 ```
 
+```{r}
+load("predictModel.rda")
+```
 
 ### 1.
 ```{r}
-nextWords("The guy in front of me just bought a pound of bacon, a bouquet, and a case of", predictModel)
+nextWords("The guy in front of me just bought a pound of bacon, a bouquet, and a case of", predictModel, output=100)
 ```
+NG> beer
 
 ### 2.
 ```{r}
-nextWords("You're the reason why I smile everyday. Can you follow me please? It would mean the", predictModel)
+nextWords("You're the reason why I smile everyday. Can you follow me please? It would mean the", predictModel, output=100)
 ```
-OK
+world -> OK
 
 ### 3.
 ```{r}
-nextWords("Hey sunshine, can you follow me and make me the", predictModel)
+nextWords("Hey sunshine, can you follow me and make me the", predictModel, output=100)
 ```
+NG> happiest
 
 ### 4.
 ```{r}
-nextWords("Very early observations on the Bills game: Offense still struggling but the", predictModel)
+nextWords("Very early observations on the Bills game: Offense still struggling but the", predictModel, output=100)
 ```
+NG> defense
 
 ### 5.
 ```{r}
-nextWords("Go on a romantic date at the", predictModel)
+nextWords("Go on a romantic date at the", predictModel, output=100)
 ```
+NG> beach
 
 ### 6.
 ```{r}
-nextWords("Well I'm pretty sure my granny has some old bagpipes in her garage I'll dust them off and be on my", predictModel)
+nextWords("Well I'm pretty sure my granny has some old bagpipes in her garage I'll dust them off and be on my", predictModel, output=100)
 ```
-OK
+way -> OK
 
 ### 7.
 ```{r}
-nextWords("Ohhhhh #PointBreak is on tomorrow. Love that film and haven't seen it in quite some", predictModel)
+nextWords("Ohhhhh #PointBreak is on tomorrow. Love that film and haven't seen it in quite some", predictModel, output=100)
 ```
-OK
+time -> OK
 
 ### 8.
 ```{r}
-nextWords("After the ice bucket challenge Louis will push his long wet hair out of his eyes with his little", predictModel)
+nextWords("After the ice bucket challenge Louis will push his long wet hair out of his eyes with his little", predictModel, output=100)
 ```
+NG
 
 ### 9.
 ```{r}
-nextWords("Be grateful for the good times and keep the faith during the", predictModel)
+nextWords("Be grateful for the good times and keep the faith during the", predictModel, output=100)
 ```
+NG
 
 ### 10.
 ```{r}
-nextWords("If this isn't the cutest thing you've ever seen, then you must be", predictModel)
+nextWords("If this isn't the cutest thing you've ever seen, then you must be", predictModel, output=100)
 ```
-OK
+NG> insane
+
