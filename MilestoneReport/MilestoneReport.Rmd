@@ -7,15 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-```
-
-```{r, message=FALSE}
-library(stringr)
-library(ggplot2)
-library(dplyr)
-library(quanteda)
-
-set.seed(3301)
+Sys.setlocale(category = "LC_TIME", locale = "C")
 ```
 
 # Project Overview
@@ -26,22 +18,560 @@ I went to the
 
 the keyboard presents three options for what the next word might be. For example, the three words might be gym, store, restaurant. In this capstone you will work on understanding and building predictive text models like those used by SwiftKey.
 
+## Goal
 
-_The motivation for this project is to:_
+The goal of this project is just to display that you've gotten used to working with the data and that you are on track to create your prediction algorithm. Please submit a report on R Pubs (http://rpubs.com/) that explains your exploratory analysis and your goals for the eventual app and algorithm. This document should be concise and explain only the major features of the data you have identified and briefly summarize your plans for creating the prediction algorithm and Shiny app in a way that would be understandable to a non-data scientist manager. You should make use of tables and plots to illustrate important summaries of the data set.
 
-1. Demonstrate that you've downloaded the data and have successfully loaded it in.
-2. Create a basic report of summary statistics about the data sets.
-3. Report any interesting findings that you amassed so far.
-4. Get feedback on your plans for creating a prediction algorithm and Shiny app.
+# Getting and cleaning the data
 
-_Review criteria_
+## Load Lirbrary
+```{r, message=FALSE, warning=FALSE}
+library(knitr)
+library(stringr)
+library(dplyr)
+library(quanteda)
+library(readtext)
+library(R.utils)
+library(ggplot2)
 
-1. Does the link lead to an HTML page describing the exploratory analysis of the training data set?
-2. Has the data scientist done basic summaries of the three files? Word counts, line counts and basic data tables?
-3. Has the data scientist made basic plots, such as histograms to illustrate features of the data?
-4. Was the report written in a brief, concise style, in a way that a non-data scientist manager could appreciate?
+set.seed(3301)
+```
 
+## Download Data
+```{r}
+downloadData <- function(workingDataPath = file.path("data")) {
+        # Download Data
+        rawDataFileUrl <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+        downloadedZipfilePath <- file.path(workingDataPath, "Coursera-SwiftKey.zip")
+        badWordsFileUrl <- "https://www.cs.cmu.edu/~biglou/resources/bad-words.txt"
+        badWordsFilePath <- file.path(workingDataPath, "bad-words.txt")
+        basePath <- file.path(workingDataPath, "final", "en_US")
+        
+        # Create working directory
+        if(!file.exists(workingDataPath)) {
+                dir.create(workingDataPath)
+        }
+        # Download ziped file
+        if(!file.exists(downloadedZipfilePath)) {
+                download.file(rawDataFileUrl, destfile = downloadedZipfilePath, method = "curl")
+        }
+        # Download Bad Words Text File
+        if(!file.exists(badWordsFilePath)) {
+                download.file(badWordsFileUrl, destfile = badWordsFilePath, method = "curl")
+        }
+        # Unzip
+        if(!file.exists(basePath)) {
+                unzip(zipfile = downloadedZipfilePath, exdir = workingDataPath)
+        }
+        
+        list(blogs = file.path(basePath, "en_US.blogs.txt"), 
+             twitter = file.path(basePath, "en_US.twitter.txt"),
+             news = file.path(basePath, "en_US.news.txt"),
+             badwords = badWordsFilePath)
+}
+
+dataPath <- file.path("..", "data")
+attach(downloadData(dataPath))
+c(blogs, twitter, news, badwords)
+```
+
+## Sub-Sampling
+Since the original data is very large and takes time to analyse, it samples to 1% of data.
+```{r sampling}
+subSample <- function(input, output) {
+        if(!file.exists(output)) {
+                subSamplingRate <- .01
+                fileLines <- as.numeric(countLines(input))
+                flipABiasedCoin <- rbinom(fileLines, size = 1, prob = subSamplingRate)
+                conRead <- file(input, "r")
+                conWrite <- file(output, "w")
+                len <- 0
+                while (length(oneLine <- readLines(conRead, 1, warn = FALSE)) > 0) {
+                        len <- len + 1
+                        if(flipABiasedCoin[len] == 1) {
+                                writeLines(oneLine, conWrite)
+                        }
+                }
+                close(conRead)
+                close(conWrite)
+        }
+        return(as.numeric(countLines(output)))
+}
+
+blogsSubSampling <- file.path(dataPath, "sub-sample.blogs.txt")
+subBlogs <- subSample(blogs, blogsSubSampling)
+
+twitterSubSampling <- file.path(dataPath, "sub-sample.twitter.txt")
+subTweets <- subSample(twitter, twitterSubSampling)
+
+newsSubSampling <- file.path(dataPath, "sub-sample.news.txt")
+subNews <- subSample(news, newsSubSampling)
+
+c(subBlogs, subTweets, subNews)
+```
+
+## Train and Test Data
+Divide the sampled data into a training set and a test set at a ratio of 7: 3.
+```{r traindata}
+devideDataset <- function(input, outputTrain, outputTest) {
+        if(!file.exists(outputTrain) || !file.exists(outputTest)) {
+                trainRate <- .7
+                fileLines <- as.numeric(countLines(input))
+                flipABiasedCoin <- rbinom(fileLines, size = 1, prob = trainRate)
+                conRead <- file(input, "r")
+                conWriteTrain <- file(outputTrain, "w")
+                conWriteTest <- file(outputTest, "w")
+                len <- 0
+                while (length(oneLine <- readLines(conRead, 1, warn = FALSE)) > 0) {
+                        len <- len + 1
+                        if(flipABiasedCoin[len] == 1) {
+                                writeLines(oneLine, conWriteTrain)
+                        } else {
+                                writeLines(oneLine, conWriteTest)
+                        }
+                }
+                close(conRead)
+                close(conWriteTrain)
+                close(conWriteTest)
+        }
+        return(as.numeric(countLines(outputTrain)))
+}
+
+blogsTrain <- paste0(blogsSubSampling, ".train.txt")
+blogsTest <- paste0(blogsSubSampling, ".test.txt")
+twitterTrain <- paste0(twitterSubSampling, ".train.txt")
+twitterTest <- paste0(twitterSubSampling, ".test.txt")
+newsTrain <- paste0(newsSubSampling, ".train.txt")
+newsTest <- paste0(newsSubSampling, ".test.txt")
+
+trainBlogs <- devideDataset(blogsSubSampling, blogsTrain, blogsTest)
+trainTweets <- devideDataset(twitterSubSampling, twitterTrain, twitterTest)
+trainNews <- devideDataset(newsSubSampling, newsTrain, newsTest)
+
+c(trainBlogs, trainTweets, trainNews)
+```
+
+## Load Data
+Loading files using the **readtext** package and make corpus using the **quanteda** package.
+```{r tokenize}
+blogsCorpus <- readtext(blogsTrain) %>% 
+        corpus()
+twitterCorpus <- readtext(twitterTrain) %>% 
+        corpus()
+newsCorpus <- readtext(newsTrain) %>% 
+        corpus()
+```
+
+## Load Bad Words
+```{r badwords}
+profanity <- readLines(badwords)
+```
+
+# Exploratory Data Analysis
+
+```{r, echo=FALSE}
+blogsSummary <- summary(blogsCorpus)
+twitterSummary <- summary(twitterCorpus)
+newsSummary <- summary(newsCorpus)
+summaryDataset <- data.frame(
+        Text = c(
+                as.character(blogsSummary$Text),
+                as.character(twitterSummary$Text),
+                as.character(newsSummary$Text)),
+        Lines=c(trainBlogs, trainTweets, trainNews),
+        Sentences=c(
+                as.character(blogsSummary$Sentences),
+                as.character(twitterSummary$Sentences),
+                as.character(newsSummary$Sentences)),
+        Tokens=c(
+                as.character(blogsSummary$Tokens),
+                as.character(twitterSummary$Tokens),
+                as.character(newsSummary$Tokens)),
+        Types=c(
+                as.character(blogsSummary$Types),
+                as.character(twitterSummary$Types),
+                as.character(newsSummary$Types))
+                    )
+kable(summaryDataset)
+```
+
+## Top 20
+```{r top20_1}
+twitterToken <- twitterCorpus %>% 
+        # nomarize words
+        tokens(remove_punct = TRUE,
+               remove_numbers = TRUE,
+               remove_url = TRUE,
+               include_docvars = FALSE) %>%
+        # removing profanity and other words
+        tokens_remove(profanity)
+
+twitterDfm <- twitterToken %>% 
+        dfm()
+twitterDfm %>%
+        topfeatures(20)
+```
+
+## Plot Word Cloud
+```{r wordcloud_1, fig.width=14, fig.height=10}
+twitterDfm %>% 
+        textplot_wordcloud(min_count = 6,
+                           random_order = FALSE, 
+                           rotation = .25,
+                           color = RColorBrewer::brewer.pal(8, "Dark2"))
+```
+
+## Nomarize Words (Remove Stop Word)
+```{r nomarize_1}
+twitterDfmNoStopWord <- twitterToken %>% 
+        # removing stop words
+        tokens_remove(stopwords('english')) %>%
+        dfm()
+```
+
+## Top 20 Nomarized Words
+```{r top20_2}
+twitterDfmNoStopWord %>%
+        topfeatures(20)
+```
+
+## Plot Normarized Word Cloud
+```{r wordcloud_2, fig.width=10, fig.height=10}
+twitterDfmNoStopWord %>%
+        textplot_wordcloud(min_count = 6,
+                           random_order = FALSE,
+                           max_words = 100,
+                           rotation = .25,
+                           color = RColorBrewer::brewer.pal(8, "Dark2"))
+```
+
+## Normarized Word Frequency Plots
+```{r}
+featuresTwitter <- twitterDfmNoStopWord %>%
+        textstat_frequency(n = 80)
+
+# Sort by reverse frequency order
+featuresTwitter$feature <- featuresTwitter %>% 
+        with(reorder(feature, -frequency))
+
+featuresTwitter %>%
+        ggplot(aes(x = feature, y = frequency)) +
+        geom_point() + 
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+## 2-Gram Top 20.
+```{r, fig.width=14, fig.height=14}
+twitterDfm2Gram <- twitterToken %>%
+        tokens_ngrams(n = 2) %>%
+        dfm()
+twitterDfm2Gram %>%
+        topfeatures(20)
+```
+
+## 2-Gram Word Cloud
+```{r, fig.height=10}
+twitterDfm2Gram %>%
+        textplot_wordcloud(min_count = 6,
+                           random_order = FALSE,
+                           max_words = 100,
+                           rotation = .25,
+                           color = RColorBrewer::brewer.pal(8, "Dark2"))
+```
+
+## 2-Gram Frequency Plots
+```{r}
+featuresTwitter2Gram <- twitterDfm2Gram %>%
+        textstat_frequency(n = 80)
+
+# Sort by reverse frequency order
+featuresTwitter2Gram$feature <- featuresTwitter2Gram %>%
+        with(reorder(feature, -frequency))
+
+featuresTwitter2Gram %>%
+        ggplot(aes(x = feature, y = frequency)) +
+        geom_point() + 
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+## 3-Gram Top 20
+```{r, fig.width=14, fig.height=14}
+twitterDfm3Gram <- twitterToken %>%
+        tokens_ngrams(n = 3) %>%
+        dfm()
+twitterDfm3Gram %>%
+        topfeatures(20)
+```
+
+## 3-Gram Word Cloud
+```{r, fig.height=14, fig.width=14}
+twitterDfm3Gram %>%
+        textplot_wordcloud(#min_count = 4,
+                           random_order = FALSE,
+                           max_words = 50,
+                           rotation = .25,
+                           color = RColorBrewer::brewer.pal(8, "Dark2"))
+```
+
+## 3-Gram Frequency Plots
+```{r}
+featuresTwitter3Gram <- twitterDfm3Gram %>%
+        textstat_frequency(60)
+
+# Sort by reverse frequency order
+featuresTwitter3Gram$feature <- featuresTwitter3Gram %>% 
+        with(reorder(feature, -frequency))
+
+featuresTwitter3Gram %>%
+        ggplot(aes(x = feature, y = frequency)) +
+        geom_point() +
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+## 1-gram 90%tile:
+```{r}
+featuresTwitterFull <- twitterDfmNoStopWord %>% textstat_frequency()
+summary(featuresTwitterFull)
+quantile(featuresTwitterFull$frequency, c(0, .1, .5, .9, 1))
+```
+
+## 2-gram 90%tile:
+```{r}
+featuresTwitter2GramFull <- twitterDfm2Gram %>% textstat_frequency()
+summary(featuresTwitter2GramFull)
+quantile(featuresTwitter2GramFull$frequency, c(0, .1, .5, .9, 1))
+```
+
+## 3-gram 90%tile:
+```{r}
+featuresTwitter3GramFull <- twitterDfm3Gram %>% textstat_frequency()
+summary(featuresTwitter3GramFull)
+quantile(featuresTwitter3GramFull$frequency, c(0, .1, .5, .9, 1))
+```
+Seems to be in accordance with the Zipf's law.
+
+
+# Modeling
+
+Concept implementation.
+
+## Good Turing Estimation
+```{r}
+simpleGoodTuring <- function(r, Nr, sd = 1.65) {
+        # number of words
+        N <- sum(r * Nr)
+        d <- diff(r)
+    
+        ## Turing estimate
+        # turing estimate index
+        ti <- which(d == 1)
+        # discount coefficients of Turing estimate
+        dct <- numeric(length(r))
+        dct[ti] <- (r[ti] + 1) / r[ti] * c(Nr[-1], 0)[ti] / Nr[ti]
+
+        ## Linear Good-Turing estimate
+        Zr <- Nr / c(1, 0.5 * (d[-1] + d[-length(d)]), d[length(d)])
+        f <- lsfit(log(r), log(Zr))
+        coef <- f$coef
+        # corrected term frequency
+        rc <- r * (1 + 1 / r)^(1 + coef[2])  
+        # discount coefficients of Linear Good-Turing estimate
+        dclgt <- rc / r
+
+        ## make switch from Turing to LGT estimates
+        # standard deviation of term frequencies between 'r' and 'rc' (?)
+        rsd <- rep(1,length(r))        
+        rsd[ti] <- (seq_len(length(r))[ti] + 1) / Nr[ti] * sqrt(Nr[ti + 1] * (1 + Nr[ti + 1] / Nr[ti]))
+        
+        dc <- dct
+        for (i in 1:length(r)) {
+            if (abs(dct[i] - dclgt[i]) * r[i] / rsd[i] <= sd) {
+                dc[i:length(dc)] <- dclgt[i:length(dc)]
+                break
+            }
+        }
+
+        ## renormalize the probabilities for observed objects
+        # summation of probabilities
+        sump <- sum(dc * r * Nr) / N
+        # renormalized discount coefficients
+        dcr <- (1 - Nr[1] / N) * dc / sump
+        
+        # term frequency
+        tf <- c(Nr[1] / N, r * dcr)
+        p <- c(Nr[1] / N, r * dcr / N)
+        names(p) <- names(tf) <- c(0, r)        
+        
+        list(p = p, r = tf)
+}
+```
+
+## PreProcess Smoothing parameter
+```{r}
+sgtFactory <- function() {
+        NrTbl1 <- textstat_frequency(twitterDfm) %>%
+                select(frequency) %>%
+                mutate(freqOfFrequency = 1) %>%
+                group_by(frequency) %>%
+                summarise_all(sum)
+        
+        SGT1 <- simpleGoodTuring(NrTbl1$frequency, NrTbl1$freqOfFrequency)
+        
+        NrTbl2 <- textstat_frequency(twitterDfm2Gram) %>%
+                select(frequency) %>%
+                mutate(freqOfFrequency = 1) %>%
+                group_by(frequency) %>%
+                summarise_all(sum)
+        
+        SGT2 <- simpleGoodTuring(NrTbl2$frequency, NrTbl2$freqOfFrequency)
+
+        NrTbl3 <- textstat_frequency(twitterDfm3Gram) %>%
+                select(frequency) %>%
+                mutate(freqOfFrequency = 1) %>%
+                group_by(frequency) %>%
+                summarise_all(sum)
+        
+        SGT3 <- simpleGoodTuring(NrTbl3$frequency, NrTbl3$freqOfFrequency)
+        
+        c(
+                dUnigram = function(freq) {
+                        SGT1$p[as.character(freq)]
+                },
+                dBigram = function(freq) {
+                        SGT2$r[as.character(freq)] / freq
+                },
+                dTrigram = function(freq) {
+                        SGT3$r[as.character(freq)] / freq
+                }
+        )
+}
+
+SGT <- sgtFactory()
+
+predictModel <- c(SGT=SGT, trigram=twitterDfm3Gram, bigram=twitterDfm2Gram, unigram=twitterDfm)
+# save(predictModel, file = "predictModel.rda")
+```
+
+## 3-gram Model using Katz's back-off
+```{r}
+nextWords <- function(input, predictModel, outputs = 3, k = 0) {
+        # k is the least important of the parameters. It is usually chosen to be 0.
+        # However, empirical testing may find better values for k.
+        inputs <- str_split(input, "\\s+")[[1]]
+        inputsSize <- length(inputs)
+        if (inputsSize > 1) {
+                preTriGram <- paste(inputs[inputsSize - 1],
+                                 inputs[inputsSize],
+                                 sep = "_")
+
+                nextWordDfm <- dfm_select(predictModel$trigram, 
+                                          paste0(preTriGram, "_*"))
+        } else {
+                if (inputs == "") { return() }
+                nextWordDfm <- NULL
+        }
+        preBiGram <- inputs[inputsSize]
+
+        # extract n-gram that starts with input
+        featuresNextWord <- NULL
+
+        if (length(nextWordDfm) > k) {
+                prevWordDfm <- dfm_select(predictModel$bigram,
+                                          phrase(preTriGram))
+
+                prevWordFreq <- textstat_frequency(prevWordDfm)$frequency
+
+                # data frame
+                featuresNextWord <-
+                        textstat_frequency(nextWordDfm) %>%
+                        mutate(p_bo = predictModel$SGT.dTrigram(frequency) * frequency / prevWordFreq)
+
+                # human readable outputs
+                featuresNextWord$feature <-
+                        sapply(as.vector(featuresNextWord$feature),
+                               function(x) {
+                                       str_split(x, "_")[[1]][3]
+                               })
+                
+                # Sort by reverse frequency order
+                featuresNextWord$feature <-
+                        with(featuresNextWord,
+                             reorder(feature,-p_bo))
+                
+        } else {
+                nextWordDfm <- dfm_select(predictModel$bigram,
+                                          paste0(preBiGram, "_*"))
+                
+                if (length(nextWordDfm) > k) {
+                        prevWordDfm <- dfm_select(predictModel$unigram,
+                                                  phrase(preBiGram))
+                        prevWordFreq <- textstat_frequency(prevWordDfm)$frequency
+        
+                        # data frame
+                        featuresNextWord <-
+                                textstat_frequency(nextWordDfm) %>%
+                                mutate(p_bo = predictModel$SGT.dBigram(frequency) * frequency / prevWordFreq)
+        
+                        # human readable outputs
+                        featuresNextWord$feature <-
+                                sapply(as.vector(featuresNextWord$feature),
+                                       function(x) {
+                                               str_split(x, "_")[[1]][2]
+                                       })
+                        
+                        # Sort by reverse frequency order
+                        featuresNextWord$feature <-
+                                with(featuresNextWord,
+                                     reorder(feature,-p_bo))
+                        
+                } else {
+                        nextWordDfm <- twitterDfm
+                        featuresNextWord <-
+                                textstat_frequency(nextWordDfm) %>%
+                                mutate(p_bo = predictModel$SGT.dUnigram(frequency))
+        
+                        # Sort by reverse frequency order
+                        featuresNextWord$feature <-
+                                with(featuresNextWord,
+                                     reorder(feature,-p_bo))
+                                
+                }
+        }
+        
+        featuresNextWord %>% slice(1:outputs)
+}
+
+```
+
+## I went to be
+```{r}
+# load("predictModel.rda")
+ggplot(nextWords("I went to be", predictModel), aes(x = feature, y = p_bo)) +
+        geom_bar(stat = "identity") + 
+        xlab("Predicted next word") + ylab("P_bo")
+```
+
+```{r}
+system.time(nextWords("I went to be", predictModel))
+```
+
+# Conclution and Next Action
+
+The result of executing the implemented model is as described above. 
+I have not verified the prediction accuracy, but I think that the prediction works well.
+It takes a long time to predict the next word.
+So, next, tune the execution time and prediction accuracy.
 
 # References
 - [Data Science Specialization - Capstone | Community Site](http://datasciencespecialization.github.io/capstone/)
 - [Quick Start Guide • quanteda](http://docs.quanteda.io/articles/pkgdown/quickstart.html)
+- [Lecture Slides from the Stanford Coursera course | Natural Language Processing](https://web.stanford.edu/~jurafsky/NLPCourseraSlides.html)
+by Dan Jurafsky and Christopher Manning
+- [Text Mining Infrastructure in R | Journal of Statistical Software](https://www.jstatsoft.org/article/view/v025i05/v25i05.pdf)
+by Ingo Feinerer, Kurt Hornik, David Meyer, Wirtschaftsuniversita ̈t Wie
+- [Speech and Language Processing (3rd ed. draft)](https://web.stanford.edu/~jurafsky/slp3/)
+by Daniel Jurafsky, Stanford University, James H. Martin, University of Colorado at Boulder
+- [Useful Resources from Luis von Ahn's Research Group](https://www.cs.cmu.edu/~biglou/resources/)
+- [https://abicky.net/2011/01/30/204409/](https://abicky.net/2011/01/30/204409/)
+- [Good-Turing smoothing without tears (1995)](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.110.8518)
+by William A. Gale
