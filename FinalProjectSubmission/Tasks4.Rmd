@@ -146,14 +146,9 @@ c(trainBlogs, trainTweets, trainNews)
 ## Load Data
 Loading files using the **readtext** package and make corpus using the **quanteda** package.
 ```{r tokenize}
-blogsCorpus <- readtext(blogsTrain) %>% 
-        corpus()
-twitterCorpus <- readtext(twitterTrain) %>% 
-        corpus()
-newsCorpus <- readtext(newsTrain) %>% 
-        corpus()
-
-projectCorpus <- blogsCorpus + twitterCorpus + newsCorpus
+projectCorpus <- readtext(blogsTrain) %>% corpus()
+projectCorpus <- projectCorpus + readtext(twitterTrain) %>% corpus()
+projectCorpus <- projectCorpus + readtext(newsTrain) %>% corpus()
 ```
 
 ## Load Bad Words
@@ -294,7 +289,8 @@ predictModel <- c(SGT = SGT,
                   trigram = projectDfm3Gram,
                   bigram = projectDfm2Gram,
                   unigram = projectDfm)
-# save(predictModel, file = "predictModel.rda")
+save(predictModel, file = "predictModel.rda")
+remove(projectDfm3Gram, projectDfm2Gram, projectDfm, SGT, projectCorpus, projectToken)
 ```
 
 ## 3-gram Model using Katz's back-off
@@ -329,7 +325,7 @@ nextWords <- function(input, predictModel, outputs = 3, k = 0) {
                 # data frame
                 featuresNextWord <-
                         textstat_frequency(nextWordDfm) %>%
-                        mutate(p_bo = predictModel$SGT.dTrigram(frequency) * frequency / prevWordFreq)
+                        mutate(p_bo = as.vector(predictModel$SGT.dTrigram(frequency) * frequency / prevWordFreq))
 
                 # human readable outputs
                 featuresNextWord$feature <-
@@ -355,7 +351,7 @@ nextWords <- function(input, predictModel, outputs = 3, k = 0) {
                         # data frame
                         featuresNextWord <-
                                 textstat_frequency(nextWordDfm) %>%
-                                mutate(p_bo = predictModel$SGT.dBigram(frequency) * frequency / prevWordFreq)
+                                mutate(p_bo = as.vector(predictModel$SGT.dBigram(frequency) * frequency / prevWordFreq))
         
                         # human readable outputs
                         featuresNextWord$feature <-
@@ -373,7 +369,7 @@ nextWords <- function(input, predictModel, outputs = 3, k = 0) {
                         nextWordDfm <- projectDfm
                         featuresNextWord <-
                                 textstat_frequency(nextWordDfm) %>%
-                                mutate(p_bo = predictModel$SGT.dUnigram(frequency))
+                                mutate(p_bo = as.vector(predictModel$SGT.dUnigram(frequency)))
         
                         # Sort by reverse frequency order
                         featuresNextWord$feature <-
@@ -382,15 +378,19 @@ nextWords <- function(input, predictModel, outputs = 3, k = 0) {
                                 
                 }
         }
-        
-        featuresNextWord %>% slice(1:outputs)
+        if (outputs > 0) {
+                featuresNextWord %>% slice(1:outputs)
+        } else {
+                featuresNextWord
+        }
 }
 
 ```
 
 ## I went to be
 ```{r}
-# load("predictModel.rda")
+load("predictModel.rda")
+
 ggplot(nextWords("I went to be", predictModel), aes(x = feature, y = p_bo)) +
         geom_bar(stat = "identity") + 
         xlab("Predicted next word") + ylab("P_bo")
@@ -418,6 +418,17 @@ _Questions to consider_
 3. Does perplexity correlate with the other measures of accuracy?
 4. Can you reduce the size of the model (number of parameters) without reducing performance?
 
+```{r}
+perplexity <- function(input, predictModel, outputs = 3, k = 0) {
+        nextWord <- nextWords(input, predictModel, outputs = 0)
+        print(nextWord)
+        p <- nextWord$p_bo
+        N <- length(nextWord$p_bo)
+
+        prod(1 / p^(1 / N))
+}
+
+```
 
 # Task 5: Creative Exploration
 
@@ -487,3 +498,5 @@ by Daniel Jurafsky, Stanford University, James H. Martin, University of Colorado
 - [https://abicky.net/2011/01/30/204409/](https://abicky.net/2011/01/30/204409/)
 - [Good-Turing smoothing without tears (1995)](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.110.8518)
 by William A. Gale
+
+- [Perplexity](https://en.wikipedia.org/wiki/Perplexity)
