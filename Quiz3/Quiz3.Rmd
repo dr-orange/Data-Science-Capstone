@@ -1,0 +1,177 @@
+---
+title: "Quiz2"
+author: "Koji"
+date: "2018/7/31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+Sys.setlocale(category = "LC_TIME", locale = "C")
+```
+
+# Project Overview
+
+Around the world, people are spending an increasing amount of time on their mobile devices for email, social networking, banking and a whole range of other activities. But typing on mobile devices can be a serious pain. SwiftKey, our corporate partner in this capstone, builds a smart keyboard that makes it easier for people to type on their mobile devices. One cornerstone of their smart keyboard is predictive text models. When someone types:
+
+I went to the
+
+the keyboard presents three options for what the next word might be. For example, the three words might be gym, store, restaurant. In this capstone you will work on understanding and building predictive text models like those used by SwiftKey.
+
+```{r, message=FALSE, warning=FALSE}
+library(stringr)
+library(dplyr)
+library(quanteda)
+library(readtext)
+library(R.utils)
+library(ggplot2)
+library(data.table)
+
+set.seed(33010)
+```
+
+```{r}
+fastNextWords <- function(input, predictModel, outputs = 3, k = 0) {
+        # k is the least important of the parameters. It is usually chosen to be 0.
+        # However, empirical testing may find better values for k.
+        inputs <- str_split(tolower(input), "\\s+")[[1]]
+        inputsSize <- length(inputs)
+        if (inputsSize > 1) {
+                preTriGram <- paste(inputs[inputsSize - 1],
+                                 inputs[inputsSize],
+                                 sep = "_")
+
+                nextWordDt <- predictModel$ngramsDt %>% filter(base == preTriGram, ngramsize == 3)
+        } else {
+                if (inputs == "") { return() }
+                nextWordDt <- NULL
+        }
+        preBiGram <- inputs[inputsSize]
+
+        # extract n-gram that starts with input
+        featuresNextWord <- NULL
+
+        if (length(nextWordDt) > k) {
+                prevWordDt <- predictModel$ngramsDt %>% filter(ngram == preTriGram, ngramsize == 2)
+
+                prevWordFreq <- prevWordDt$frequency
+
+                # data frame
+                featuresNextWord <-
+                        nextWordDt %>%
+                        mutate(p_bo = as.vector(
+                                predictModel$SGT.dTrigram(frequency) * frequency / prevWordFreq)) %>%
+                        # Sort by reverse frequency order
+                        arrange(-p_bo, prediction)
+        } else {
+                nextWordDt <- predictModel$ngramsDt %>% filter(base == preBiGram, ngramsize == 2)
+
+                if (length(nextWordDt) > k) {
+                        prevWordDt <- predictModel$ngramsDt %>% filter(ngram == preBiGram, ngramsize == 1)
+
+                        prevWordFreq <- prevWordDt$frequency
+        
+                        # data frame
+                        featuresNextWord <-
+                                nextWordDt %>%
+                                mutate(p_bo = as.vector(
+                                        predictModel$SGT.dBigram(frequency) * frequency / prevWordFreq))
+
+                        alpha <- 1 / sum(featuresNextWord$p_bo)
+                        featuresNextWord <- featuresNextWord %>%
+                                mutate(p_bo = alpha * p_bo) %>%
+                                # Sort by reverse frequency order
+                                arrange(-p_bo, prediction)
+                } else {
+                        nextWordDt <- predictModel$unigram
+                        prevWordFreq <- length(nextWordDfm)
+
+                        featuresNextWord <-
+                                nextWordDt %>%
+                                mutate(p_bo = as.vector(
+                                        predictModel$SGT.dUnigram(frequency) * frequency / prevWordFreq))
+        
+                        alpha <- 1 / sum(featuresNextWord$p_bo)
+                        featuresNextWord <- featuresNextWord %>%
+                                mutate(p_bo = alpha * p_bo) %>%
+                                # Sort by reverse frequency order
+                                arrange(-p_bo, prediction)
+                                
+                }
+        }
+        if (outputs > 0) {
+                featuresNextWord %>% slice(1:outputs)
+        } else {
+                featuresNextWord
+        }
+}
+
+```
+
+```{r}
+load("predictModel.rda")
+```
+
+### 1.
+```{r}
+fastNextWords("When you breathe, I want to be the air for you. I'll be there for you, I'd live and I'd", predictModel, outputs = 0)
+```
+give>NG
+?eat>NG
+
+### 2.
+```{r}
+fastNextWords("Guy at my table's wife got up to go to the bathroom and I asked about dessert and he started telling me about his", predictModel, outputs = 0)
+```
+?marital>OK
+
+### 3.
+```{r}
+fastNextWords("I'd give anything to see arctic monkeys this", predictModel, outputs = 0)
+```
+?morning>NG
+weekend>OK
+
+### 4.
+```{r}
+fastNextWords("Talking to your mom has the same effect as a hug and helps reduce your", predictModel, outputs = 0)
+```
+?stress>OK
+
+### 5.
+```{r}
+fastNextWords("When you were in Holland you were like 1 inch away from me but you hadn't time to take a", predictModel, outputs = 0)
+```
+look>NG
+?picture>OK
+
+### 6.
+```{r}
+fastNextWords("I'd just like all of these questions answered, a presentation of evidence, and a jury to settle the", predictModel, outputs = 0)
+```
+account>NG
+?motter>OK
+
+### 7.
+```{r}
+fastNextWords("I can't deal with unsymetrical things. I can't even hold an uneven number of bags of groceries in each", predictModel, outputs = 0)
+```
+hand>OK
+
+### 8.
+```{r}
+fastNextWords("Every inch of you is perfect from the bottom to the", predictModel, outputs = 0)
+```
+top>OK
+
+### 9.
+```{r}
+fastNextWords("I’m thankful my childhood was filled with imagination and bruises from playing", predictModel, outputs = 0)
+```
+outside>OK
+
+### 10.
+```{r}
+fastNextWords("I like how the same people are in almost all of Adam Sandler's", predictModel, outputs = 0)
+```
+?movie>OK

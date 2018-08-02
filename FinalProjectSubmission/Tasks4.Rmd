@@ -72,7 +72,7 @@ Since the original data is very large and takes time to analyse, it samples to 1
 ```{r sampling}
 subSample <- function(input, output) {
         if(!file.exists(output)) {
-                subSamplingRate <- .01
+                subSamplingRate <- .05
                 fileLines <- as.numeric(countLines(input))
                 flipABiasedCoin <- rbinom(fileLines, size = 1, prob = subSamplingRate)
                 conRead <- file(input, "r")
@@ -554,6 +554,7 @@ fastNextWords <- function(input, predictModel, outputs = 3, k = 0) {
 
 ```{r}
 predictModel <- c(predictModel, ngramsDt = list(ngramsDt))
+save(predictModel, file = "predictModel.rda")
 remove(trigramDt, bigramDt, unigramDt, ngramsDt)
 ```
 
