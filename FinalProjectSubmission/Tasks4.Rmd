@@ -18,6 +18,30 @@ I went to the
 
 the keyboard presents three options for what the next word might be. For example, the three words might be gym, store, restaurant. In this capstone you will work on understanding and building predictive text models like those used by SwiftKey.
 
+# Goal
+The goal of this exercise is to create a product to highlight the prediction algorithm that you have built and to provide an interface that can be accessed by others. For this project you must submit:
+
+1. A Shiny app that takes as input a phrase (multiple words) in a text box input and outputs a prediction of the next word.
+2. A slide deck consisting of no more than 5 slides created with R Studio Presenter (https://support.rstudio.com/hc/en-us/articles/200486468-Authoring-R-Presentations) pitching your algorithm and app as if you were presenting to your boss or an investor.
+
+_Review criteria_
+
+### Data Product
+
+- Does the link lead to a Shiny app with a text input box that is running on shinyapps.io?
+- Does the app load to the point where it can accept input?
+- When you type a phrase in the input box do you get a prediction of a single word after pressing submit and/or a suitable delay for the model to compute the answer?
+- Put five phrases drawn from Twitter or news articles in English leaving out the last word. Did it give a prediction for every one?
+
+### Slide Deck
+
+- Does the link lead to a 5 slide deck on R Pubs?
+- Does the slide deck contain a description of the algorithm used to make the prediction?
+- Does the slide deck describe the app, give instructions, and describe how it functions?
+- How would you describe the experience of using this app?
+- Does the app present a novel approach and/or is particularly well done?
+- Would you hire this person for your own data science startup company?
+
 ```{r, message=FALSE, warning=FALSE}
 library(stringr)
 library(dplyr)
@@ -435,6 +459,44 @@ system.time(
 )
 ```
 
+
+## Perplexity
+
+Implement **perplexity** function and compare accuracy.
+```{r}
+perplexity <- function(input, predictModel, outputs = 3, k = 0) {
+        nextWord <- nextWords(input, predictModel, outputs = 0)
+        p <- nextWord$p_bo
+        N <- length(nextWord$p_bo)
+
+        prod(1 / p^(1 / N))
+}
+```
+
+```{r}
+perplexity("I love", predictModel)
+```
+```{r}
+perplexity("love", predictModel)
+```
+
+# Task 5: Creative Exploration
+
+So far you have used basic models to understand and predict words. In this next task, your goal is to use all the resources you have available to you (from the Data Science Specialization, resources on the web, or your own creativity) to improve the predictive accuracy while reducing computational runtime and model complexity (if you can). Be sure to hold out a test set to evaluate the new, more creative models you are building.
+
+_Tasks to accomplish_
+
+1. Explore new models and data to improve your predictive model.
+2. Evaluate your new predictions on both accuracy and efficiency.
+
+_Questions to consider_
+
+1. What are some alternative data sets you could consider using?
+2. What are ways in which the n-gram model may be inefficient?
+3. What are the most commonly missed n-grams? Can you think of a reason why they would be missed and fix that?
+4. What are some other things that other people have tried to improve their model?
+5. Can you estimate how uncertain you are about the words you are predicting?
+
 It is understood that execution of the dfm_select function is slow. Once the prediction model is completed, we do not need to operate with **quanteda**, so we convert it to **data.table** to speed up execution at prediction.
 
 ```{r, message=FALSE, warning=FALSE}
@@ -588,19 +650,6 @@ system.time(
 )
 ```
 
-## Perplexity
-
-Implement **perplexity** function and compare accuracy.
-```{r}
-perplexity <- function(input, predictModel, outputs = 3, k = 0) {
-        nextWord <- nextWords(input, predictModel, outputs = 0)
-        p <- nextWord$p_bo
-        N <- length(nextWord$p_bo)
-
-        prod(1 / p^(1 / N))
-}
-```
-
 ```{r}
 fastPerplexity <- function(input, predictModel, outputs = 3, k = 0) {
         nextWord <- fastNextWords(input, predictModel, outputs = 0)
@@ -626,24 +675,6 @@ fastPerplexity("love", predictModel)
 ```
 Oops. I have made something wrong..
 
-# Task 5: Creative Exploration
-
-So far you have used basic models to understand and predict words. In this next task, your goal is to use all the resources you have available to you (from the Data Science Specialization, resources on the web, or your own creativity) to improve the predictive accuracy while reducing computational runtime and model complexity (if you can). Be sure to hold out a test set to evaluate the new, more creative models you are building.
-
-_Tasks to accomplish_
-
-1. Explore new models and data to improve your predictive model.
-2. Evaluate your new predictions on both accuracy and efficiency.
-
-_Questions to consider_
-
-1. What are some alternative data sets you could consider using?
-2. What are ways in which the n-gram model may be inefficient?
-3. What are the most commonly missed n-grams? Can you think of a reason why they would be missed and fix that?
-4. What are some other things that other people have tried to improve their model?
-5. Can you estimate how uncertain you are about the words you are predicting?
-
-
 # Task 6: Data Product
 
 The goal of this exercise is to create a product to highlight the prediction algorithm that you have built and to provide an interface that can be accessed by others via a Shiny app..
@@ -657,6 +688,8 @@ _Questions to consider_
 1. What are the most interesting ways you could show off your algorithm?
 2. Are there any data visualizations you think might be helpful (look at the Swiftkey data dashboard if you have it loaded on your phone)?
 3. How should you document the use of your data product (separately from how you created it) so that others can rapidly deploy your algorithm?
+
+
 
 _Tips, tricks, and hints_
 
