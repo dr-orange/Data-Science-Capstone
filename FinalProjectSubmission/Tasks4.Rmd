@@ -96,7 +96,7 @@ Since the original data is very large and takes time to analyse, it samples to 1
 ```{r sampling}
 subSample <- function(input, output) {
         if(!file.exists(output)) {
-                subSamplingRate <- .05
+                subSamplingRate <- .02
                 fileLines <- as.numeric(countLines(input))
                 flipABiasedCoin <- rbinom(fileLines, size = 1, prob = subSamplingRate)
                 conRead <- file(input, "r")
@@ -689,11 +689,11 @@ _Questions to consider_
 2. Are there any data visualizations you think might be helpful (look at the Swiftkey data dashboard if you have it loaded on your phone)?
 3. How should you document the use of your data product (separately from how you created it) so that others can rapidly deploy your algorithm?
 
-
-
 _Tips, tricks, and hints_
 
 1. Consider the size of the predictive model you have developed. You may have to sacrifice some accuracy to have a fast enough/small enough model to load into Shiny.
+
+![](../res/ShinyApp.png)
 
 
 # Task 7: Slide Deck

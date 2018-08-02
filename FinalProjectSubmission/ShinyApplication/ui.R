@@ -10,38 +10,34 @@
 library(shiny)
 
 # Define UI for application that draws a map
-shinyUI(
-        fluidPage(
-                # Application title
-                titlePanel("Predict Next Words"),
-                # Show input form
-                fluidRow(column(
-                        12,
-                        wellPanel(
-                                # Show predicted next words
-                                textOutput("nextWord", inline = TRUE),
-                                textInput(
-                                        "ngram",
-                                        "",
-                                        value = "Predict the "
-                                ),
-                                h4("Prediction Plot"),
-                                # Show predicted plot
-                                plotOutput("distPlot")
-                        )
-                )),
-
-                
-                # Appendix
-                h3("Appendix"),
-                p(
-                        tags$span("server.R and ui.R code on "),
-                        tags$a(href = "https://github.com/dr-orange/Data-Science-Capstone/tree/master/FinalProjectSubmission/ShinyApplication", "GitHub")
-                ),
-                p(
-                        tags$span("Overview on "),
-                        tags$a(href = "http://rpubs.com/dr_orange_jr/406377", "RPubs")
+shinyUI(fluidPage(
+        # Application title
+        titlePanel("Predict Next Words"),
+        # Show input form
+        fluidRow(column(
+                12,
+                wellPanel(
+                        # Show predicted next words
+                        h3("> ", textOutput("nextWord", inline = TRUE)),
+                        textInput("ngram",
+                                  "",
+                                  value = "Predict the ")
                 )
-                
+        )),
+        
+        h4("Prediction Plot"),
+        # Show predicted plot
+        plotOutput("distPlot"),
+        
+        # Appendix
+        h3("Appendix"),
+        p(
+                tags$span("server.R and ui.R code on "),
+                tags$a(href = "https://github.com/dr-orange/Data-Science-Capstone/tree/master/FinalProjectSubmission/ShinyApplication", "GitHub")
+        ),
+        p(
+                tags$span("Overview on "),
+                tags$a(href = "http://rpubs.com/dr_orange_jr/406377", "RPubs")
         )
-)
+        
+))

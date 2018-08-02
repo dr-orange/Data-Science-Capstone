@@ -13,14 +13,18 @@ library(dplyr)
 library(ggplot2)
 library(data.table)
 
-predictModelFilePath <- file.path(".", "predictModel.rda")
+predictModelFilePath <- file.path(".", "predictModelForApp.rda")
 
 if (!file.exists(predictModelFilePath)) {
+        
 } else {
         load(predictModelFilePath)
 }
 
-fastNextWords <- function(input, predictModel, outputs = 3, k = 0) {
+fastNextWords <- function(input,
+                          predictModel,
+                          outputs = 3,
+                          k = 0) {
         # k is the least important of the parameters. It is usually chosen to be 0.
         # However, empirical testing may find better values for k.
         inputs <- str_split(tolower(input), "\\s+")[[1]]
@@ -33,7 +37,9 @@ fastNextWords <- function(input, predictModel, outputs = 3, k = 0) {
                 nextWordDt <- predictModel$ngramsDt %>%
                         filter(base == preTriGram, ngramsize == 3)
         } else {
-                if (inputs == "") { return() }
+                if (inputs == "") {
+                        return()
+                }
                 nextWordDt <- NULL
         }
         preBiGram <- inputs[inputsSize]
@@ -51,7 +57,8 @@ fastNextWords <- function(input, predictModel, outputs = 3, k = 0) {
                 featuresNextWord <-
                         nextWordDt %>%
                         mutate(p_bo = as.vector(
-                                predictModel$SGT.dTrigram(frequency) * frequency / prevWordFreq)) %>%
+                                predictModel$SGT.dTrigram(frequency) * frequency / prevWordFreq
+                        )) %>%
                         # Sort by reverse frequency order
                         arrange(-p_bo, prediction)
         } else {
@@ -67,8 +74,11 @@ fastNextWords <- function(input, predictModel, outputs = 3, k = 0) {
                         # data frame
                         featuresNextWord <-
                                 nextWordDt %>%
-                                mutate(p_bo = as.vector(
-                                        predictModel$SGT.dBigram(frequency) * frequency / prevWordFreq))
+                                mutate(
+                                        p_bo = as.vector(
+                                                predictModel$SGT.dBigram(frequency) * frequency / prevWordFreq
+                                        )
+                                )
                         
                         alpha <- 1 / sum(featuresNextWord$p_bo)
                         featuresNextWord <- featuresNextWord %>%
@@ -81,8 +91,11 @@ fastNextWords <- function(input, predictModel, outputs = 3, k = 0) {
                         
                         featuresNextWord <-
                                 nextWordDt %>%
-                                mutate(p_bo = as.vector(
-                                        predictModel$SGT.dUnigram(frequency) * frequency / prevWordFreq))
+                                mutate(
+                                        p_bo = as.vector(
+                                                predictModel$SGT.dUnigram(frequency) * frequency / prevWordFreq
+                                        )
+                                )
                         
                         alpha <- 1 / sum(featuresNextWord$p_bo)
                         featuresNextWord <- featuresNextWord %>%
@@ -102,13 +115,11 @@ fastNextWords <- function(input, predictModel, outputs = 3, k = 0) {
 # Define server logic required to draw a map
 shinyServer(function(input, output) {
         dataInput <- reactive({
-                print(input$ngram)
                 ngram <- str_trim(input$ngram, side = "both")
                 fastNextWords(ngram, predictModel)
         })
         output$nextWord <- renderText({
                 nextWords <- dataInput()
-                print(nextWords$prediction)
                 paste(nextWords$prediction, collapse = " | ")
         })
         output$distPlot <- renderPlot({
@@ -116,9 +127,13 @@ shinyServer(function(input, output) {
                 nextWords <- dataInput()
                 if (length(nextWords) > 0) {
                         ggplot(nextWords,
-                               aes(x = reorder(prediction, -p_bo), y = p_bo)) +
-                                geom_bar(stat = "identity", fill = "orangered") + 
-                                xlab("Predicted next word") + ylab("P_bo")
+                               aes(
+                                       x = reorder(prediction,-p_bo),
+                                       y = p_bo
+                               )) +
+                                geom_bar(stat = "identity", fill = "orangered") +
+                                theme(axis.text.x = element_text(size=25)) +
+                                xlab("Predicted next word [Top 3]") + ylab("P_bo")
                 } else {
                         
                 }
