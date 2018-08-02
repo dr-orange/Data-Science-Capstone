@@ -289,7 +289,7 @@ predictModel <- c(SGT = SGT,
                   trigram = projectDfm3Gram,
                   bigram = projectDfm2Gram,
                   unigram = projectDfm)
-save(predictModel, file = "predictModel.rda")
+# save(predictModel, file = "predictModel.rda")
 remove(projectDfm3Gram, projectDfm2Gram, projectDfm, SGT, projectCorpus, projectToken)
 ```
 
@@ -342,7 +342,7 @@ nextWords <- function(input, predictModel, outputs = 3, k = 0) {
         } else {
                 nextWordDfm <- dfm_select(predictModel$bigram,
                                           paste0(preBiGram, "_*"))
-                
+
                 if (length(nextWordDfm) > k) {
                         prevWordDfm <- dfm_select(predictModel$unigram,
                                                   phrase(preBiGram))
@@ -352,7 +352,11 @@ nextWords <- function(input, predictModel, outputs = 3, k = 0) {
                         featuresNextWord <-
                                 textstat_frequency(nextWordDfm) %>%
                                 mutate(p_bo = as.vector(predictModel$SGT.dBigram(frequency) * frequency / prevWordFreq))
-        
+
+                        alpha <- 1 / sum(featuresNextWord$p_bo)
+                        featuresNextWord %>%
+                                mutate(p_bo = alpha * p_bo)
+
                         # human readable outputs
                         featuresNextWord$feature <-
                                 sapply(as.vector(featuresNextWord$feature),
@@ -366,11 +370,18 @@ nextWords <- function(input, predictModel, outputs = 3, k = 0) {
                                      reorder(feature,-p_bo))
                         
                 } else {
-                        nextWordDfm <- projectDfm
+                        nextWordDfm <- predictModel$unigram
+                        prevWordFreq <- length(nextWordDfm)
+                        
+
                         featuresNextWord <-
                                 textstat_frequency(nextWordDfm) %>%
-                                mutate(p_bo = as.vector(predictModel$SGT.dUnigram(frequency)))
+                                mutate(p_bo = as.vector(predictModel$SGT.dUnigram(frequency) * frequency / prevWordFreq))
         
+                        alpha <- 1 / sum(featuresNextWord$p_bo)
+                        featuresNextWord %>%
+                                mutate(p_bo = alpha * p_bo)
+
                         # Sort by reverse frequency order
                         featuresNextWord$feature <-
                                 with(featuresNextWord,
@@ -389,7 +400,7 @@ nextWords <- function(input, predictModel, outputs = 3, k = 0) {
 
 ## I went to be
 ```{r}
-load("predictModel.rda")
+# load("predictModel.rda")
 
 ggplot(nextWords("I went to be", predictModel), aes(x = feature, y = p_bo)) +
         geom_bar(stat = "identity") + 
@@ -419,16 +430,200 @@ _Questions to consider_
 4. Can you reduce the size of the model (number of parameters) without reducing performance?
 
 ```{r}
+system.time(
+        dfm_select(predictModel$trigram, "thanks_for_*")
+)
+```
+
+It is understood that execution of the dfm_select function is slow. Once the prediction model is completed, we do not need to operate with **quanteda**, so we convert it to **data.table** to speed up execution at prediction.
+
+```{r, message=FALSE, warning=FALSE}
+library(data.table)
+```
+
+```{r}
+trigramDt <- data.table(ngram = colnames(predictModel$trigram), keep.rownames = F, stringsAsFactors = F)
+trigramDt[, base := strsplit(ngram, "_[^_]+$")[[1]], by = ngram]
+trigramDt[, prediction := str_split(ngram, paste0(base, "_"), n=2)[[1]][2], by = ngram]
+trigramDt[, ngramsize := 3, by = ngram]
+trigramDt[, frequency := colSums(predictModel$trigram)]
+
+bigramDt <- data.table(ngram = colnames(predictModel$bigram), keep.rownames = F, stringsAsFactors = F)
+bigramDt[, base := strsplit(ngram, "_[^_]+$")[[1]], by = ngram]
+bigramDt[, prediction := str_split(ngram, paste0(base, "_"), n=2)[[1]][2], by = ngram]
+bigramDt[, ngramsize := 2, by = ngram]
+bigramDt[, frequency := colSums(predictModel$bigram)]
+
+unigramDt <- data.table(ngram = colnames(predictModel$unigram), keep.rownames = F, stringsAsFactors = F)
+unigramDt[, base := "", by = ngram]
+unigramDt[, prediction := ngram, by = ngram]
+unigramDt[, ngramsize := 1, by = ngram]
+unigramDt[, frequency := colSums(predictModel$unigram)]
+
+ngramsDt <- rbindlist(list(trigramDt, bigramDt, unigramDt))
+```
+
+For the above data conversion logic, refer to the following pages.  
+[generation of ngrams is producing string of prefix, suffix and elsewhere underscores #923](https://github.com/quanteda/quanteda/issues/923)
+
+```{r}
+system.time(
+        ngramsDt %>% filter(base == "thanks_for", ngramsize == 3)
+)
+```
+From the above, you can see that `data.table` is executed 500 times faster than `dfm_select`.
+
+## Rebuild the prediction model using `data.table`
+```{r}
+fastNextWords <- function(input, predictModel, outputs = 3, k = 0) {
+        # k is the least important of the parameters. It is usually chosen to be 0.
+        # However, empirical testing may find better values for k.
+        inputs <- str_split(tolower(input), "\\s+")[[1]]
+        inputsSize <- length(inputs)
+        if (inputsSize > 1) {
+                preTriGram <- paste(inputs[inputsSize - 1],
+                                 inputs[inputsSize],
+                                 sep = "_")
+
+                nextWordDt <- predictModel$ngramsDt %>% filter(base == preTriGram, ngramsize == 3)
+        } else {
+                if (inputs == "") { return() }
+                nextWordDt <- NULL
+        }
+        preBiGram <- inputs[inputsSize]
+
+        # extract n-gram that starts with input
+        featuresNextWord <- NULL
+
+        if (length(nextWordDt) > k) {
+                prevWordDt <- predictModel$ngramsDt %>% filter(ngram == preTriGram, ngramsize == 2)
+
+                prevWordFreq <- prevWordDt$frequency
+
+                # data frame
+                featuresNextWord <-
+                        nextWordDt %>%
+                        mutate(p_bo = as.vector(
+                                predictModel$SGT.dTrigram(frequency) * frequency / prevWordFreq)) %>%
+                        # Sort by reverse frequency order
+                        arrange(-p_bo, prediction)
+        } else {
+                nextWordDt <- predictModel$ngramsDt %>% filter(base == preBiGram, ngramsize == 2)
+
+                if (length(nextWordDt) > k) {
+                        prevWordDt <- predictModel$ngramsDt %>% filter(ngram == preBiGram, ngramsize == 1)
+
+                        prevWordFreq <- prevWordDt$frequency
+        
+                        # data frame
+                        featuresNextWord <-
+                                nextWordDt %>%
+                                mutate(p_bo = as.vector(
+                                        predictModel$SGT.dBigram(frequency) * frequency / prevWordFreq))
+
+                        alpha <- 1 / sum(featuresNextWord$p_bo)
+                        featuresNextWord <- featuresNextWord %>%
+                                mutate(p_bo = alpha * p_bo) %>%
+                                # Sort by reverse frequency order
+                                arrange(-p_bo, prediction)
+                } else {
+                        nextWordDt <- predictModel$unigram
+                        prevWordFreq <- length(nextWordDfm)
+
+                        featuresNextWord <-
+                                nextWordDt %>%
+                                mutate(p_bo = as.vector(
+                                        predictModel$SGT.dUnigram(frequency) * frequency / prevWordFreq))
+        
+                        alpha <- 1 / sum(featuresNextWord$p_bo)
+                        featuresNextWord <- featuresNextWord %>%
+                                mutate(p_bo = alpha * p_bo) %>%
+                                # Sort by reverse frequency order
+                                arrange(-p_bo, prediction)
+                                
+                }
+        }
+        if (outputs > 0) {
+                featuresNextWord %>% slice(1:outputs)
+        } else {
+                featuresNextWord
+        }
+}
+
+```
+
+```{r}
+predictModel <- c(predictModel, ngramsDt = list(ngramsDt))
+remove(trigramDt, bigramDt, unigramDt, ngramsDt)
+```
+
+```{r}
+ggplot(fastNextWords("I went to be", predictModel), aes(x = reorder(prediction, -p_bo), y = p_bo)) +
+        geom_bar(stat = "identity", fill = "orangered") + 
+        xlab("Predicted next word") + ylab("P_bo")
+```
+
+```{r}
+system.time(
+        nextWords("I went to be a", predictModel)
+)
+```
+
+```{r}
+system.time(
+        fastNextWords("I went to be a", predictModel)
+)
+```
+
+```{r}
+system.time(
+        nextWords("zzzzzz wwwwwww", predictModel)
+)
+```
+
+```{r}
+system.time(
+        fastNextWords("zzzzzz wwwwwww", predictModel)
+)
+```
+
+## Perplexity
+
+Implement **perplexity** function and compare accuracy.
+```{r}
 perplexity <- function(input, predictModel, outputs = 3, k = 0) {
         nextWord <- nextWords(input, predictModel, outputs = 0)
-        print(nextWord)
         p <- nextWord$p_bo
         N <- length(nextWord$p_bo)
 
         prod(1 / p^(1 / N))
 }
-
 ```
+
+```{r}
+fastPerplexity <- function(input, predictModel, outputs = 3, k = 0) {
+        nextWord <- fastNextWords(input, predictModel, outputs = 0)
+        p <- nextWord$p_bo
+        N <- length(nextWord$p_bo)
+
+        prod(1 / p^(1 / N))
+}
+```
+
+```{r}
+perplexity("I love", predictModel)
+```
+```{r}
+perplexity("love", predictModel)
+```
+
+```{r}
+fastPerplexity("I love", predictModel)
+```
+```{r}
+fastPerplexity("love", predictModel)
+```
+Oops. I have made something wrong..
 
 # Task 5: Creative Exploration
 
@@ -500,3 +695,4 @@ by Daniel Jurafsky, Stanford University, James H. Martin, University of Colorado
 by William A. Gale
 
 - [Perplexity](https://en.wikipedia.org/wiki/Perplexity)
+- [generation of ngrams is producing string of prefix, suffix and elsewhere underscores #923](https://github.com/quanteda/quanteda/issues/923)
