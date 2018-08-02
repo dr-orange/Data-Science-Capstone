@@ -23,7 +23,7 @@ shinyUI(
                                 textInput(
                                         "ngram",
                                         "",
-                                        value = "What a "
+                                        value = "Predict the "
                                 ),
                                 h4("Prediction Plot"),
                                 # Show predicted plot
@@ -36,7 +36,7 @@ shinyUI(
                 h3("Appendix"),
                 p(
                         tags$span("server.R and ui.R code on "),
-                        tags$a(href = "https://github.com/dr-orange/Developing-Data-Products/tree/master/ShinyApplicationAndReproduciblePitch/ShinyApplication", "GitHub")
+                        tags$a(href = "https://github.com/dr-orange/Data-Science-Capstone/tree/master/FinalProjectSubmission/ShinyApplication", "GitHub")
                 ),
                 p(
                         tags$span("Overview on "),
