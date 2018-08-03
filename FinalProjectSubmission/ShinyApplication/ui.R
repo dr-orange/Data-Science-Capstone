@@ -14,26 +14,24 @@ shinyUI(fluidPage(
         # Application title
         titlePanel("Predict Next Words"),
         # Show input form
-        fluidRow(column(
-                12,
-                wellPanel(
-                        # Show predicted next words
-                        h3("> ", textOutput("nextWord", inline = TRUE)),
-                        textInput("ngram",
-                                  "",
-                                  value = "Predict the ")
-                )
-        )),
-        
-        h4("Prediction Plot"),
+        fluidRow(column(12,
+                        wellPanel(
+                                # Show predicted next words
+                                h3("> ", textOutput("nextWord", inline = TRUE)),
+                                textInput("ngram",
+                                          "",
+                                          value = "What a ")
+                        ))),
+
         # Show predicted plot
-        tabsetPanel(type = "tabs",
-                    tabPanel("Bar Plot",
-                             plotOutput("distPlot")
-                    ),
-                    tabPanel("Word Cloud",
-                             plotOutput("wordCloudPlot")
-                    )
+        tabsetPanel(
+                type = "tabs",
+                tabPanel("Bar Plot",
+                         plotOutput("distPlot", height = "650px")),
+                tabPanel("Word Cloud",
+                         plotOutput("wordCloudPlot", height = "650px")),
+                tabPanel("Sentiment Word Cloud",
+                         plotOutput("sentimentPlot", height = "650px"))
         ),
         
         # Appendix

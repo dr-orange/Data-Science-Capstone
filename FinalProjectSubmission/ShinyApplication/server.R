@@ -14,6 +14,8 @@ library(ggplot2)
 library(data.table)
 library(wordcloud)
 library(RColorBrewer)
+library(tidytext)
+library(tibble)
 
 # options(warn=0)
 
@@ -120,9 +122,9 @@ fastNextWords <- function(input,
 normalize <- function(word, size = 0) {
         if (is.null(word)) {
                 NULL
-        } else if(nrow(word) == 0) {
+        } else if (nrow(word) == 0) {
                 NULL
-        } else if(size != 0) {
+        } else if (size != 0) {
                 word %>% slice(1:size)
         } else {
                 word
@@ -145,11 +147,12 @@ shinyServer(function(input, output) {
                 if (length(nextWords) > 0) {
                         ggplot(nextWords,
                                aes(
-                                       x = reorder(prediction,-p_bo),
+                                       x = reorder(prediction, -p_bo),
                                        y = p_bo
                                )) +
                                 geom_bar(stat = "identity", fill = "orangered") +
-                                theme(axis.text.x = element_text(size=25)) +
+                                theme(axis.text.x = element_text(size =
+                                                                         25)) +
                                 xlab("Predicted next word [Top 3]") + ylab("P_bo")
                 } else {
                         
@@ -169,6 +172,42 @@ shinyServer(function(input, output) {
                                 colors = brewer.pal(8, "Dark2")
                         )
                 } else {
+                        
+                }
+        })
+        output$sentimentPlot <- renderPlot({
+                nextWords <- normalize(dataInput())
+                if (length(nextWords) > 0) {
+                        emo <- nextWords %>%
+                                left_join(get_sentiments("bing"),
+                                          by = c("prediction" = "word")) %>%
+                                mutate(
+                                        sentiment = ifelse(is.na(sentiment), "na", sentiment),
+                                        positive = ifelse(sentiment == "positive", frequency, 0),
+                                        negative = ifelse(sentiment == "negative", frequency, 0),
+                                        nutral = ifelse(sentiment == "na", frequency, 0)
+                                ) %>%
+                                column_to_rownames("prediction") %>%
+                                select(positive, negative, nutral)
+                        
+                        if (sum(emo$positive) * sum(emo$negative) * sum(emo$nutral) > 0) {
+                                emo %>%
+                                        comparison.cloud(
+                                                colors = c(
+                                                        "darkgreen",
+                                                        "gray20",
+                                                        "blue"
+                                                ),
+                                                random.order = FALSE,
+                                                scale = c(3:2),
+                                                rot.per = .25,
+                                                min.words = 3,
+                                                max.words = 50
+                                        )
+                        } else {
+                                
+                        }
+                        
                 }
         })
 })

@@ -675,6 +675,33 @@ fastPerplexity("love", predictModel)
 ```
 Oops. I have made something wrong..
 
+
+### suggestion from Quiz2, 3
+
+
+
+https://www.tidytextmining.com/sentiment.html
+
+```{r}
+library(tidytext)
+library(tibble)
+
+fastNextWords("Just", predictModel, outputs = 0) %>%
+        left_join(get_sentiments("bing"), by = c("prediction" = "word")) %>%
+        mutate(sentiment = ifelse(is.na(sentiment), "na", sentiment),
+               positive = ifelse(sentiment == "positive", frequency, 0), 
+               negative = ifelse(sentiment == "negative", frequency, 0),
+               nutral = ifelse(sentiment == "na", frequency, 0)
+        ) %>%
+        column_to_rownames("prediction") %>%
+        select(positive, negative, nutral) %>%
+        comparison.cloud(colors = c("darkgreen", "gray20", "blue"),
+                                random.order = FALSE,
+                                rot.per = .25,
+                   max.words = 50)
+```
+
+
 # Task 6: Data Product
 
 The goal of this exercise is to create a product to highlight the prediction algorithm that you have built and to provide an interface that can be accessed by others via a Shiny app..
