@@ -12,6 +12,10 @@ library(stringr)
 library(dplyr)
 library(ggplot2)
 library(data.table)
+library(wordcloud)
+library(RColorBrewer)
+
+# options(warn=0)
 
 predictModelFilePath <- file.path(".", "predictModelForApp.rda")
 
@@ -105,6 +109,7 @@ fastNextWords <- function(input,
                         
                 }
         }
+        
         if (outputs > 0) {
                 featuresNextWord %>% slice(1:outputs)
         } else {
@@ -112,19 +117,31 @@ fastNextWords <- function(input,
         }
 }
 
+normalize <- function(word, size = 0) {
+        if (is.null(word)) {
+                NULL
+        } else if(nrow(word) == 0) {
+                NULL
+        } else if(size != 0) {
+                word %>% slice(1:size)
+        } else {
+                word
+        }
+}
+
 # Define server logic required to draw a map
 shinyServer(function(input, output) {
         dataInput <- reactive({
                 ngram <- str_trim(input$ngram, side = "both")
-                fastNextWords(ngram, predictModel)
+                fastNextWords(ngram, predictModel, outputs = 0)
         })
         output$nextWord <- renderText({
-                nextWords <- dataInput()
+                nextWords <- normalize(dataInput(), 3)
                 paste(nextWords$prediction, collapse = " | ")
         })
         output$distPlot <- renderPlot({
                 # plot next words
-                nextWords <- dataInput()
+                nextWords <- normalize(dataInput(), 3)
                 if (length(nextWords) > 0) {
                         ggplot(nextWords,
                                aes(
@@ -136,6 +153,22 @@ shinyServer(function(input, output) {
                                 xlab("Predicted next word [Top 3]") + ylab("P_bo")
                 } else {
                         
+                }
+        })
+        output$wordCloudPlot <- renderPlot({
+                nextWords <- normalize(dataInput())
+                if (length(nextWords) > 0) {
+                        wordcloud(
+                                nextWords[, 3],
+                                nextWords[, 5],
+                                scale = c(3:.5),
+                                min.freq = 1,
+                                max.words = 50,
+                                random.order = FALSE,
+                                rot.per = .25,
+                                colors = brewer.pal(8, "Dark2")
+                        )
+                } else {
                 }
         })
 })

@@ -27,7 +27,14 @@ shinyUI(fluidPage(
         
         h4("Prediction Plot"),
         # Show predicted plot
-        plotOutput("distPlot"),
+        tabsetPanel(type = "tabs",
+                    tabPanel("Bar Plot",
+                             plotOutput("distPlot")
+                    ),
+                    tabPanel("Word Cloud",
+                             plotOutput("wordCloudPlot")
+                    )
+        ),
         
         # Appendix
         h3("Appendix"),
