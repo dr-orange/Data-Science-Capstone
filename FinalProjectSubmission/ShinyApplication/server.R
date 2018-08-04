@@ -153,13 +153,17 @@ shinyServer(function(input, output) {
                                                         style = "font-size: 1.4em"
                                                 )
                                         )
+                                # onclick(paste0("button_", i), js$updateInput(input$ngram, i))
                         }
                 }
                 tagList(listBtn)
         })
+        
+        # This is not a smart way, but it was obstructed by the closure and it had to do this way.
         onclick("button_1", js$updateInput(input$ngram, "1"))
         onclick("button_2", js$updateInput(input$ngram, "2"))
         onclick("button_3", js$updateInput(input$ngram, "3"))
+
         output$distPlot <- renderPlot({
                 # plot next words
                 nextWords <- normalize(dataInput(), 3)

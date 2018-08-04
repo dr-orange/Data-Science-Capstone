@@ -12,12 +12,12 @@ library(shinyjs)
 
 jsCode <- '
 shinyjs.updateInput = function(params) {
- var defaultParams = {
-  val : "",
-  btn : "1"
- };
- params = shinyjs.getParams(params, defaultParams);
- $("#ngram").val(params.val + $("#button_" + params.btn).text()).focus();
+        var defaultParams = {
+                val : "",
+                btn : "1"
+        };
+        params = shinyjs.getParams(params, defaultParams);
+        $("#ngram").val(params.val + $("#button_" + params.btn).text()).focus();
 }'
 
 # Define UI for application that draws a map
@@ -44,6 +44,7 @@ shinyUI(fluidPage(
                 tabPanel("Word Cloud",
                          plotOutput("wordCloudPlot", height = "650px")),
                 tabPanel("Sentiment Word Cloud",
+                         p("Depending on the emotion of the input sentence, I wanted to weight the predicted word. However, it is not done"),
                          plotOutput("sentimentPlot", height = "650px"))
         ),
         
