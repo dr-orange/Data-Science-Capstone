@@ -119,12 +119,27 @@ fastNextWords("When you breathe, I want to be the air for you. I'll be there for
 give>NG
 ?eat>NG
 
+sleep
+die
+
+```bash
+> grep --color=always "I\('d\| would\) \(give\|eat\|sleep\|die\)" ../data/final/en_US/en_US.*
+```
+
 ### 2.
 ```{r}
 fastNextWords("Guy at my table's wife got up to go to the bathroom and I asked about dessert and he started telling me about his", predictModel, outputs = 0)
 ```
 ?marital>OK
 
+financial
+spiritual
+horticultural
+
+```bash
+> grep --color=always "about \(his\|her\|my\|out\|your\) \(marital\|financial\|apiritual\|horticultural\)" ../data/*
+> grep --color=always "about \(his \|her \|my \|our \|your \)\{0,1\}marital" ../data/final/en_US/en_US.*
+```
 ### 3.
 ```{r}
 fastNextWords("I'd give anything to see arctic monkeys this", predictModel, outputs = 0)
@@ -132,11 +147,21 @@ fastNextWords("I'd give anything to see arctic monkeys this", predictModel, outp
 ?morning>NG
 weekend>OK
 
+decade
+month
+```bash
+grep --color=always "\(monkeys\|him\|her\|them\|you\) this \(morning\|weekend\|decade\|month\)" ../data/*
+```
+
 ### 4.
 ```{r}
 fastNextWords("Talking to your mom has the same effect as a hug and helps reduce your", predictModel, outputs = 0)
 ```
 ?stress>OK
+
+hapiness
+sleepiness
+hunger
 
 ### 5.
 ```{r}
@@ -145,12 +170,18 @@ fastNextWords("When you were in Holland you were like 1 inch away from me but yo
 look>NG
 ?picture>OK
 
+walk
+minute
+
 ### 6.
 ```{r}
 fastNextWords("I'd just like all of these questions answered, a presentation of evidence, and a jury to settle the", predictModel, outputs = 0)
 ```
 account>NG
-?motter>OK
+?matter>OK
+
+incident
+case
 
 ### 7.
 ```{r}
@@ -158,11 +189,21 @@ fastNextWords("I can't deal with unsymetrical things. I can't even hold an uneve
 ```
 hand>OK
 
+arm
+finger
+toe
+
 ### 8.
 ```{r}
 fastNextWords("Every inch of you is perfect from the bottom to the", predictModel, outputs = 0)
 ```
 top>OK
+
+top
+middle
+center
+side
+
 
 ### 9.
 ```{r}
@@ -170,8 +211,33 @@ fastNextWords("I’m thankful my childhood was filled with imagination and bruis
 ```
 outside>OK
 
+daily
+weekly
+inside
+
 ### 10.
 ```{r}
 fastNextWords("I like how the same people are in almost all of Adam Sandler's", predictModel, outputs = 0)
 ```
 ?movie>OK
+
+stories
+pictures
+novels
+```bash
+> grep --color=always "Adam Sandler" ../data/*
+```
+
+
+# Conclusion
+
+Considering the following may improve the accuracy of the predictive model.
+
+- Classify into the future or past
+- Multiward
+        https://docs.quanteda.io/articles/pkgdown/examples/phrase.html
+- 'd or would, can't or can not
+- (Adam Sandler's|her|his|my|our|their)
+- (arctic monkeys|her|him|me|us|them)
+- A phrase like news and a phrase like twitter are different?
+        cor.test() can compute correlation between large sentence and 1 sentence?

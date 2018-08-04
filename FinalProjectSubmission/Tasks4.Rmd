@@ -499,6 +499,8 @@ _Questions to consider_
 
 It is understood that execution of the dfm_select function is slow. Once the prediction model is completed, we do not need to operate with **quanteda**, so we convert it to **data.table** to speed up execution at prediction.
 
+### efficiency
+
 ```{r, message=FALSE, warning=FALSE}
 library(data.table)
 ```
@@ -676,7 +678,9 @@ fastPerplexity("love", predictModel)
 Oops. I have made something wrong..
 
 
-### suggestion from Quiz2, 3
+### accuracy
+
+#### suggestion from Quiz2, 3
 
 
 
@@ -757,3 +761,4 @@ by William A. Gale
 
 - [Perplexity](https://en.wikipedia.org/wiki/Perplexity)
 - [generation of ngrams is producing string of prefix, suffix and elsewhere underscores #923](https://github.com/quanteda/quanteda/issues/923)
+- [Text Mining with R](https://www.tidytextmining.com)
