@@ -8,16 +8,29 @@
 #
 
 library(shiny)
+library(shinyjs)
+
+jsCode <- '
+shinyjs.updateInput = function(params) {
+ var defaultParams = {
+  val : "",
+  btn : "1"
+ };
+ params = shinyjs.getParams(params, defaultParams);
+ $("#ngram").val(params.val + $("#button_" + params.btn).text()).focus();
+}'
 
 # Define UI for application that draws a map
 shinyUI(fluidPage(
+        useShinyjs(),
+        extendShinyjs(text = jsCode, functions = c("updateInput")),
         # Application title
         titlePanel("Predict Next Words"),
         # Show input form
         fluidRow(column(12,
                         wellPanel(
                                 # Show predicted next words
-                                h3("> ", textOutput("nextWord", inline = TRUE)),
+                                uiOutput("nextWordBtn"),
                                 textInput("ngram",
                                           "",
                                           value = "What a ")

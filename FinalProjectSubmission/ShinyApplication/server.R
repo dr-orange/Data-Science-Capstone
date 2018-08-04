@@ -8,6 +8,7 @@
 #
 
 library(shiny)
+library(shinyjs)
 library(stringr)
 library(dplyr)
 library(ggplot2)
@@ -22,7 +23,7 @@ library(tibble)
 predictModelFilePath <- file.path(".", "predictModelForApp.rda")
 
 if (!file.exists(predictModelFilePath)) {
-        
+        # nothing
 } else {
         load(predictModelFilePath)
 }
@@ -137,10 +138,28 @@ shinyServer(function(input, output) {
                 ngram <- str_trim(input$ngram, side = "both")
                 fastNextWords(ngram, predictModel, outputs = 0)
         })
-        output$nextWord <- renderText({
+        output$nextWordBtn <- renderUI({
                 nextWords <- normalize(dataInput(), 3)
-                paste(nextWords$prediction, collapse = " | ")
+                listBtn <-
+                        list(span("> ", style = "font-size: 1.4em", inline = TRUE))
+                if (length(nextWords$prediction) > 0) {
+                        for (i in 1:length(nextWords$prediction)) {
+                                listBtn <-
+                                        list(
+                                                listBtn,
+                                                actionButton(
+                                                        paste0("button_", i),
+                                                        nextWords$prediction[i],
+                                                        style = "font-size: 1.4em"
+                                                )
+                                        )
+                        }
+                }
+                tagList(listBtn)
         })
+        onclick("button_1", js$updateInput(input$ngram, "1"))
+        onclick("button_2", js$updateInput(input$ngram, "2"))
+        onclick("button_3", js$updateInput(input$ngram, "3"))
         output$distPlot <- renderPlot({
                 # plot next words
                 nextWords <- normalize(dataInput(), 3)
@@ -183,25 +202,20 @@ shinyServer(function(input, output) {
                                           by = c("prediction" = "word")) %>%
                                 mutate(
                                         sentiment = ifelse(is.na(sentiment), "na", sentiment),
-                                        positive = ifelse(sentiment == "positive", frequency, 0),
-                                        negative = ifelse(sentiment == "negative", frequency, 0),
-                                        nutral = ifelse(sentiment == "na", frequency, 0)
+                                        Positive = ifelse(sentiment == "positive", frequency, 0),
+                                        Negative = ifelse(sentiment == "negative", frequency, 0),
+                                        Neutral = ifelse(sentiment == "na", frequency, 0)
                                 ) %>%
                                 column_to_rownames("prediction") %>%
-                                select(positive, negative, nutral)
+                                select(Positive, Negative, Neutral)
                         
-                        if (sum(emo$positive) * sum(emo$negative) * sum(emo$nutral) > 0) {
+                        if (sum(emo$Positive) * sum(emo$Negative) * sum(emo$Neutral) > 0) {
                                 emo %>%
                                         comparison.cloud(
-                                                colors = c(
-                                                        "darkgreen",
-                                                        "gray20",
-                                                        "blue"
-                                                ),
+                                                colors = brewer.pal(8, "Dark2"),
                                                 random.order = FALSE,
                                                 scale = c(3:2),
                                                 rot.per = .25,
-                                                min.words = 3,
                                                 max.words = 50
                                         )
                         } else {
