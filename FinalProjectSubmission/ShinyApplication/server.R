@@ -44,9 +44,6 @@ fastNextWords <- function(input,
                 nextWordDt <- predictModel$ngramsDt %>%
                         filter(base == preTriGram, ngramsize == 3)
         } else {
-                if (inputs == "") {
-                        return()
-                }
                 nextWordDt <- NULL
         }
         preBiGram <- inputs[inputsSize]
@@ -72,7 +69,7 @@ fastNextWords <- function(input,
                 nextWordDt <- predictModel$ngramsDt %>%
                         filter(base == preBiGram, ngramsize == 2)
                 
-                if (length(nextWordDt) > k) {
+                if (nrow(nextWordDt) > k) {
                         prevWordDt <- predictModel$ngramsDt %>%
                                 filter(ngram == preBiGram, ngramsize == 1)
                         
@@ -93,8 +90,9 @@ fastNextWords <- function(input,
                                 # Sort by reverse frequency order
                                 arrange(-p_bo, prediction)
                 } else {
-                        nextWordDt <- predictModel$unigram
-                        prevWordFreq <- length(nextWordDfm)
+                        nextWordDt <- predictModel$ngramsDt %>%
+                                filter(ngramsize == 1)
+                        prevWordFreq <- sum(nextWordDt$frequency)
                         
                         featuresNextWord <-
                                 nextWordDt %>%
@@ -120,6 +118,35 @@ fastNextWords <- function(input,
         }
 }
 
+nearestWord <- function(input) {
+        
+}
+
+prevWords <- function(input) {
+        inputs <- str_split(input, "\\s+")[[1]]
+        prevInput <- paste(inputs[-length(inputs)], collapse = " ")
+        nowWord <- inputs[length(inputs)]
+        
+        list(nowWord = nowWord, prevInput = prevInput)
+}
+
+fastNowWords <- function(input,
+                          predictModel,
+                          outputs = 0,
+                          k = 0) {
+        prevInput <- prevWords(input)$prevInput
+        nowWord <- prevWords(input)$nowWord
+
+        predictWord <- fastNextWords(prevInput, predictModel, outputs = 0) %>% 
+                filter(str_detect(prediction, paste0("^", nowWord)))
+        
+        if (outputs > 0) {
+                predictWord %>% slice(1:outputs)
+        } else {
+                predictWord
+        }
+}
+
 normalize <- function(word, size = 0) {
         if (is.null(word)) {
                 NULL
@@ -132,17 +159,54 @@ normalize <- function(word, size = 0) {
         }
 }
 
+# emotionOfSentence <- function(sentence) {
+#         word <- str_split(tolower(sentence), "\\s+")[[1]]
+#         data.frame(word = word, frequency = 1) %>%
+#                 left_join(get_sentiments("bing")) %>%
+#                 mutate(
+#                         sentiment = ifelse(is.na(sentiment), "na", sentiment),
+#                         Positive = ifelse(sentiment == "positive", frequency, 0),
+#                         Negative = ifelse(sentiment == "negative", frequency, 0),
+#                         Neutral = ifelse(sentiment == "na", frequency, 0)
+#                 ) %>%
+#                 select(word, Positive, Negative, Neutral)
+#         # not effective?
+# }
+
 # Define server logic required to draw a map
-shinyServer(function(input, output) {
+shinyServer(function(input, output, session) {
         dataInput <- reactive({
                 ngram <- str_trim(input$ngram, side = "both")
                 fastNextWords(ngram, predictModel, outputs = 0)
         })
+        
+        dataInput2 <- reactive({
+                ngram <- input$ngram
+                if(length(grep("\\s$", ngram)) == 0) {
+                        fastNowWords(ngram, predictModel, outputs = 3)
+                } else {
+                        NULL
+                }
+        })
+
         output$nextWordBtn <- renderUI({
                 nextWords <- normalize(dataInput(), 3)
+                nowWords <- normalize(dataInput2(), 3)
                 listBtn <-
                         list(span("> ", style = "font-size: 1.4em", inline = TRUE))
-                if (length(nextWords$prediction) > 0) {
+                if (length(nowWords) > 0) {
+                        for (i in 1:length(nowWords$prediction)) {
+                                listBtn <-
+                                        list(
+                                                listBtn,
+                                                actionButton(
+                                                        paste0("button_n", i),
+                                                        nowWords$prediction[i],
+                                                        style = "font-size: 1.4em"
+                                                )
+                                        )
+                        }
+                } else if (length(nextWords$prediction) > 0) {
                         for (i in 1:length(nextWords$prediction)) {
                                 listBtn <-
                                         list(
@@ -155,11 +219,16 @@ shinyServer(function(input, output) {
                                         )
                                 # onclick(paste0("button_", i), js$updateInput(input$ngram, i))
                         }
+                } else {
+                        
                 }
                 tagList(listBtn)
         })
         
         # This is not a smart way, but it was obstructed by the closure and it had to do this way.
+        onclick("button_n1", js$updateInput(prevWords(input$ngram)$prevInput, "n1", " "))
+        onclick("button_n2", js$updateInput(prevWords(input$ngram)$prevInput, "n2", " "))
+        onclick("button_n3", js$updateInput(prevWords(input$ngram)$prevInput, "n3", " "))
         onclick("button_1", js$updateInput(input$ngram, "1"))
         onclick("button_2", js$updateInput(input$ngram, "2"))
         onclick("button_3", js$updateInput(input$ngram, "3"))
@@ -167,7 +236,18 @@ shinyServer(function(input, output) {
         output$distPlot <- renderPlot({
                 # plot next words
                 nextWords <- normalize(dataInput(), 3)
-                if (length(nextWords) > 0) {
+                nowWords <- normalize(dataInput2(), 3)
+                if (length(nowWords) > 0) {
+                        ggplot(nowWords,
+                               aes(
+                                       x = reorder(prediction, -p_bo),
+                                       y = p_bo
+                               )) +
+                                geom_bar(stat = "identity", fill = "limegreen") +
+                                theme(axis.text.x = element_text(size =
+                                                                         25)) +
+                                xlab("Predicted next word [Top 3]") + ylab("P_bo")
+                } else if (length(nextWords) > 0) {
                         ggplot(nextWords,
                                aes(
                                        x = reorder(prediction, -p_bo),
@@ -181,6 +261,8 @@ shinyServer(function(input, output) {
                         
                 }
         })
+        
+        ## --------------------------------------------------------------------------
         output$wordCloudPlot <- renderPlot({
                 nextWords <- normalize(dataInput())
                 if (length(nextWords) > 0) {
@@ -198,6 +280,7 @@ shinyServer(function(input, output) {
                         
                 }
         })
+
         output$sentimentPlot <- renderPlot({
                 nextWords <- normalize(dataInput())
                 if (length(nextWords) > 0) {

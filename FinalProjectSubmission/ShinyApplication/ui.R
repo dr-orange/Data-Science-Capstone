@@ -14,10 +14,17 @@ jsCode <- '
 shinyjs.updateInput = function(params) {
         var defaultParams = {
                 val : "",
-                btn : "1"
+                btn : "1",
+                sep : "",
         };
         params = shinyjs.getParams(params, defaultParams);
-        $("#ngram").val(params.val + $("#button_" + params.btn).text()).focus();
+        console.log(params)
+        $("#ngram").val(
+                params.val
+                + ((params.val != "")?params.sep:"")
+                + $("#button_" + params.btn).text()
+                + " "
+        ).focus().change();
 }'
 
 # Define UI for application that draws a map
@@ -25,31 +32,46 @@ shinyUI(fluidPage(
         useShinyjs(),
         extendShinyjs(text = jsCode, functions = c("updateInput")),
         # Application title
-        titlePanel("Predict Next Words"),
+        titlePanel("Smart Keyboard"),
         # Show input form
-        fluidRow(column(12,
+        fluidRow(column(9,
                         wellPanel(
                                 # Show predicted next words
                                 uiOutput("nextWordBtn"),
                                 textInput("ngram",
                                           "",
                                           value = "What a ")
+                        )),
+                 column(3,
+                        wellPanel(
+                                h4("Features: "),
+                                span("- Predict next word."),br(),
+                                span("- Autocomplete word."),br(),
+                                span("- Fix typo."),br(),
+                                style = "background: grey; color: white"
                         ))),
-
+        hr(),
+        h3("Inside of the prediction model", style = "color: grey"),
         # Show predicted plot
         tabsetPanel(
                 type = "tabs",
                 tabPanel("Bar Plot",
-                         plotOutput("distPlot", height = "650px")),
+                         span(intToUtf8(as.integer("0x25A0")), style = "color: orangered"),
+                         span("Predicted next word.", style = "color: grey"),
+                         span(intToUtf8(as.integer("0x25A0")), style = "color: limegreen"),
+                         span("Autocompleted word.", style = "color: grey"),
+                         span(intToUtf8(as.integer("0x25A0")), style = "color: royalblue"),
+                         span("Fixed word.", style = "color: grey"),
+                         plotOutput("distPlot", height = "400px")),
                 tabPanel("Word Cloud",
                          plotOutput("wordCloudPlot", height = "650px")),
                 tabPanel("Sentiment Word Cloud",
-                         p("Depending on the emotion of the input sentence, I wanted to weight the predicted word. However, it is not done"),
+                         p("The aim is to quantify the emotions of the input words and weighted the predicted next word. However, it is not done", style = "color: grey"),
                          plotOutput("sentimentPlot", height = "650px"))
         ),
         
         # Appendix
-        h3("Appendix"),
+        h3("Appendix", style = "color: grey"),
         p(
                 tags$span("server.R and ui.R code on "),
                 tags$a(href = "https://github.com/dr-orange/Data-Science-Capstone/tree/master/FinalProjectSubmission/ShinyApplication", "GitHub")

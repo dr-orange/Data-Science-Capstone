@@ -706,6 +706,27 @@ fastNextWords("Just", predictModel, outputs = 0) %>%
 ```
 
 
+```{r}
+#inputWord <- "When you breathe, I want to be the air for you. I'll be there for you, I'd live and I'd"
+#inputWord <- "Guy at my table's wife got up to go to the bathroom and I asked about dessert and he started telling me about his"
+#inputWord <- "Talking to your mom has the same effect as a hug and helps reduce your"
+#inputWord <- "When you were in Holland you were like 1 inch away from me but you hadn't time to take a"
+#inputWord <- "I'd just like all of these questions answered, a presentation of evidence, and a jury to settle the"
+#inputWord <- "I can't deal with unsymetrical things. I can't even hold an uneven number of bags of groceries in each"
+inputWord <- "Every inch of you is perfect from the bottom to the"
+data.frame(word = str_split(tolower(inputWord), "\\s+")[[1]], frequency = 1) %>%                                left_join(get_sentiments("bing")) %>%
+    mutate(
+        sentiment = ifelse(is.na(sentiment), "na", sentiment),
+        Positive = ifelse(sentiment == "positive", frequency, 0),
+        Negative = ifelse(sentiment == "negative", frequency, 0),
+        Neutral = ifelse(sentiment == "na", frequency, 0)
+    ) %>%
+    select(word, Positive, Negative, Neutral)
+```
+
+It is not effective. ?
+
+
 # Task 6: Data Product
 
 The goal of this exercise is to create a product to highlight the prediction algorithm that you have built and to provide an interface that can be accessed by others via a Shiny app..
