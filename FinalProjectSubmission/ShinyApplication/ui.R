@@ -25,12 +25,16 @@ shinyjs.updateInput = function(params) {
                 + $("#button_" + params.btn).text()
                 + " "
         ).focus().change();
-}'
+};
+shinyjs.clearInput = function() {
+        $("#ngram").val("").focus().change();
+};
+'
 
 # Define UI for application that draws a map
 shinyUI(fluidPage(
         useShinyjs(),
-        extendShinyjs(text = jsCode, functions = c("updateInput")),
+        extendShinyjs(text = jsCode, functions = c("updateInput", "clearInput")),
         # Application title
         titlePanel("Smart Keyboard"),
         # Show input form
@@ -38,9 +42,10 @@ shinyUI(fluidPage(
                         wellPanel(
                                 # Show predicted next words
                                 uiOutput("nextWordBtn"),
-                                textInput("ngram",
+                                div(textInput("ngram",
                                           "",
-                                          value = "What a ")
+                                          value = "What a "), style="display: inline-block;vertical-align:center;width:90%"),
+                                div(actionButton("clear", intToUtf8(as.integer("0x2573"))), style="display: inline-block;vertical-align:center;")
                         )),
                  column(3,
                         wellPanel(

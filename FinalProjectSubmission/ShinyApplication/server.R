@@ -195,6 +195,7 @@ shinyServer(function(input, output, session) {
                 listBtn <-
                         list(span("> ", style = "font-size: 1.4em", inline = TRUE))
                 if (length(nowWords) > 0) {
+                # Autocomplete
                         for (i in 1:length(nowWords$prediction)) {
                                 listBtn <-
                                         list(
@@ -207,6 +208,7 @@ shinyServer(function(input, output, session) {
                                         )
                         }
                 } else if (length(nextWords$prediction) > 0) {
+                # Prediction
                         for (i in 1:length(nextWords$prediction)) {
                                 listBtn <-
                                         list(
@@ -220,6 +222,7 @@ shinyServer(function(input, output, session) {
                                 # onclick(paste0("button_", i), js$updateInput(input$ngram, i))
                         }
                 } else {
+                # Autocorrect
                         
                 }
                 tagList(listBtn)
@@ -232,7 +235,8 @@ shinyServer(function(input, output, session) {
         onclick("button_1", js$updateInput(input$ngram, "1"))
         onclick("button_2", js$updateInput(input$ngram, "2"))
         onclick("button_3", js$updateInput(input$ngram, "3"))
-
+        onclick("clear", js$clearInput())
+        
         output$distPlot <- renderPlot({
                 # plot next words
                 nextWords <- normalize(dataInput(), 3)
