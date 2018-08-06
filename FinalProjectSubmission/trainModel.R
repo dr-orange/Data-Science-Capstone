@@ -53,7 +53,7 @@ downloadData <- function(workingDataPath = file.path("data")) {
 
 subSample <- function(input, output) {
         if (!file.exists(output)) {
-                subSamplingRate <- .03
+                subSamplingRate <- .25 # 25% data. object size is >2Gb (Shinyapp.io limit 1Gb)
                 fileLines <- as.numeric(countLines(input))
                 flipABiasedCoin <-
                         rbinom(fileLines, size = 1, prob = subSamplingRate)
@@ -349,7 +349,7 @@ trainModel <- function(dataPath, predictModelFilePath) {
         trigramDt[, prediction := str_split(ngram, paste0(base, "_"), n = 2)[[1]][2], by = ngram]
         trigramDt[, ngramsize := 3, by = ngram]
         trigramDt[, frequency := colSums(trigram)]
-        
+
         bigramDt <-
                 data.table(
                         ngram = colnames(bigram),
@@ -360,7 +360,7 @@ trainModel <- function(dataPath, predictModelFilePath) {
         bigramDt[, prediction := str_split(ngram, paste0(base, "_"), n = 2)[[1]][2], by = ngram]
         bigramDt[, ngramsize := 2, by = ngram]
         bigramDt[, frequency := colSums(bigram)]
-        
+
         unigramDt <-
                 data.table(
                         ngram = colnames(unigram),
@@ -373,6 +373,7 @@ trainModel <- function(dataPath, predictModelFilePath) {
         unigramDt[, frequency := colSums(unigram)]
         
         ngramsDt <- rbindlist(list(trigramDt, bigramDt, unigramDt))
+        setkeyv(ngramsDt, c("ngram", "base", "prediction"))
         
         predictModel <- c(SGT = SGT, ngramsDt = list(ngramsDt))
         

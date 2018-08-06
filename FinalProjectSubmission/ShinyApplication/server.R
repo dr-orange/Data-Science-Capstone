@@ -41,8 +41,8 @@ fastNextWords <- function(input,
                                     inputs[inputsSize],
                                     sep = "_")
                 
-                nextWordDt <- predictModel$ngramsDt %>%
-                        filter(base == preTriGram, ngramsize == 3)
+                nextWordDt <-
+                        predictModel$ngramsDt[base == preTriGram & ngramsize == 3]
         } else {
                 nextWordDt <- NULL
         }
@@ -52,62 +52,40 @@ fastNextWords <- function(input,
         featuresNextWord <- NULL
         
         if (length(nextWordDt) > k) {
-                prevWordDt <- predictModel$ngramsDt %>%
-                        filter(ngram == preTriGram, ngramsize == 2)
+                prevWordDt <-
+                        predictModel$ngramsDt[ngram == preTriGram & ngramsize == 2]
                 
                 prevWordFreq <- prevWordDt$frequency
                 
                 # data frame
                 featuresNextWord <-
-                        nextWordDt %>%
-                        mutate(p_bo = as.vector(
-                                predictModel$SGT.dTrigram(frequency) * frequency / prevWordFreq
-                        )) %>%
-                        # Sort by reverse frequency order
-                        arrange(-p_bo, prediction)
+                        setorderv(nextWordDt[, p_bo := as.vector(predictModel$SGT.dTrigram(frequency) * frequency / prevWordFreq)],
+                                  c("p_bo", "prediction"), c(-1, 1))
         } else {
-                nextWordDt <- predictModel$ngramsDt %>%
-                        filter(base == preBiGram, ngramsize == 2)
+                nextWordDt <- predictModel$ngramsDt[base == preBiGram & ngramsize == 2]
                 
                 if (nrow(nextWordDt) > k) {
-                        prevWordDt <- predictModel$ngramsDt %>%
-                                filter(ngram == preBiGram, ngramsize == 1)
+                        prevWordDt <- predictModel$ngramsDt[ngram == preBiGram & ngramsize == 1]
                         
                         prevWordFreq <- prevWordDt$frequency
                         
                         # data frame
                         featuresNextWord <-
-                                nextWordDt %>%
-                                mutate(
-                                        p_bo = as.vector(
-                                                predictModel$SGT.dBigram(frequency) * frequency / prevWordFreq
-                                        )
-                                )
-                        
+                                nextWordDt[, p_bo := as.vector(predictModel$SGT.dBigram(frequency) * frequency / prevWordFreq)]
+
                         alpha <- 1 / sum(featuresNextWord$p_bo)
-                        featuresNextWord <- featuresNextWord %>%
-                                mutate(p_bo = alpha * p_bo) %>%
-                                # Sort by reverse frequency order
-                                arrange(-p_bo, prediction)
+                        featuresNextWord <- setorderv(featuresNextWord[, p_bo := alpha * p_bo],
+                                                      c("p_bo", "prediction"), c(-1, 1))
                 } else {
-                        nextWordDt <- predictModel$ngramsDt %>%
-                                filter(ngramsize == 1)
+                        nextWordDt <- predictModel$ngramsDt[ngramsize == 1]
                         prevWordFreq <- sum(nextWordDt$frequency)
                         
                         featuresNextWord <-
-                                nextWordDt %>%
-                                mutate(
-                                        p_bo = as.vector(
-                                                predictModel$SGT.dUnigram(frequency) * frequency / prevWordFreq
-                                        )
-                                )
-                        
+                                nextWordDt[, p_bo := as.vector(predictModel$SGT.dUnigram(frequency) * frequency / prevWordFreq)]
+
                         alpha <- 1 / sum(featuresNextWord$p_bo)
-                        featuresNextWord <- featuresNextWord %>%
-                                mutate(p_bo = alpha * p_bo) %>%
-                                # Sort by reverse frequency order
-                                arrange(-p_bo, prediction)
-                        
+                        featuresNextWord <- setorderv(featuresNextWord[, p_bo := alpha * p_bo],
+                                                      c("p_bo", "prediction"), c(-1, 1))
                 }
         }
         
@@ -131,13 +109,14 @@ prevWords <- function(input) {
 }
 
 fastNowWords <- function(input,
-                          predictModel,
-                          outputs = 0,
-                          k = 0) {
+                         predictModel,
+                         outputs = 0,
+                         k = 0) {
         prevInput <- prevWords(input)$prevInput
         nowWord <- prevWords(input)$nowWord
-
-        predictWord <- fastNextWords(prevInput, predictModel, outputs = 0) %>% 
+        
+        predictWord <-
+                fastNextWords(prevInput, predictModel, outputs = 0) %>%
                 filter(str_detect(prediction, paste0("^", nowWord)))
         
         if (outputs > 0) {
@@ -176,7 +155,7 @@ normalize <- function(word, size = 0) {
 # Define server logic required to draw a map
 shinyServer(function(input, output, session) {
         hide("loading_page")
-
+        
         dataInput <- reactive({
                 ngram <- str_trim(input$ngram, side = "both")
                 fastNextWords(ngram, predictModel, outputs = 0)
@@ -184,20 +163,20 @@ shinyServer(function(input, output, session) {
         
         dataInput2 <- reactive({
                 ngram <- input$ngram
-                if(length(grep("\\s$", ngram)) == 0) {
+                if (length(grep("\\s$", ngram)) == 0) {
                         fastNowWords(ngram, predictModel, outputs = 3)
                 } else {
                         NULL
                 }
         })
-
+        
         output$nextWordBtn <- renderUI({
                 nextWords <- normalize(dataInput(), 3)
                 nowWords <- normalize(dataInput2(), 3)
                 listBtn <-
                         list(span("> ", style = "font-size: 1.4em", inline = TRUE))
                 if (length(nowWords) > 0) {
-                # Autocomplete
+                        # Autocomplete
                         for (i in 1:length(nowWords$prediction)) {
                                 listBtn <-
                                         list(
@@ -210,7 +189,7 @@ shinyServer(function(input, output, session) {
                                         )
                         }
                 } else if (length(nextWords$prediction) > 0) {
-                # Prediction
+                        # Prediction
                         for (i in 1:length(nextWords$prediction)) {
                                 listBtn <-
                                         list(
@@ -224,21 +203,25 @@ shinyServer(function(input, output, session) {
                                 # onclick(paste0("button_", i), js$updateInput(input$ngram, i))
                         }
                 } else {
-                # Autocorrect
+                        # Autocorrect
                         # adist() or library(stringdist)
+                        # https://cran.r-project.org/doc/contrib/de_Jonge+van_der_Loo-Introduction_to_data_cleaning_with_R.pdf
                 }
                 tagList(listBtn)
         })
         
         # This is not a smart way, but it was obstructed by the closure and it had to do this way.
-        onclick("button_n1", js$updateInput(prevWords(input$ngram)$prevInput, "n1", " "))
-        onclick("button_n2", js$updateInput(prevWords(input$ngram)$prevInput, "n2", " "))
-        onclick("button_n3", js$updateInput(prevWords(input$ngram)$prevInput, "n3", " "))
+        onclick("button_n1",
+                js$updateInput(prevWords(input$ngram)$prevInput, "n1", " "))
+        onclick("button_n2",
+                js$updateInput(prevWords(input$ngram)$prevInput, "n2", " "))
+        onclick("button_n3",
+                js$updateInput(prevWords(input$ngram)$prevInput, "n3", " "))
         onclick("button_1", js$updateInput(input$ngram, "1"))
         onclick("button_2", js$updateInput(input$ngram, "2"))
         onclick("button_3", js$updateInput(input$ngram, "3"))
         onclick("clear", js$clearInput())
-
+        
         output$distPlot <- renderPlot({
                 # plot next words
                 nextWords <- normalize(dataInput(), 3)
@@ -246,7 +229,7 @@ shinyServer(function(input, output, session) {
                 if (length(nowWords) > 0) {
                         ggplot(nowWords,
                                aes(
-                                       x = reorder(prediction, -p_bo),
+                                       x = reorder(prediction,-p_bo),
                                        y = p_bo
                                )) +
                                 geom_bar(stat = "identity", fill = "limegreen") +
@@ -256,7 +239,7 @@ shinyServer(function(input, output, session) {
                 } else if (length(nextWords) > 0) {
                         ggplot(nextWords,
                                aes(
-                                       x = reorder(prediction, -p_bo),
+                                       x = reorder(prediction,-p_bo),
                                        y = p_bo
                                )) +
                                 geom_bar(stat = "identity", fill = "orangered") +
@@ -286,7 +269,7 @@ shinyServer(function(input, output, session) {
                         
                 }
         })
-
+        
         output$sentimentPlot <- renderPlot({
                 nextWords <- normalize(dataInput())
                 if (length(nextWords) > 0) {
