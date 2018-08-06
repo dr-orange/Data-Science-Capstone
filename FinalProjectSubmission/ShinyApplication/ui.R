@@ -18,7 +18,6 @@ shinyjs.updateInput = function(params) {
                 sep : "",
         };
         params = shinyjs.getParams(params, defaultParams);
-        console.log(params)
         $("#ngram").val(
                 params.val
                 + ((params.val != "")?params.sep:"")
@@ -29,12 +28,24 @@ shinyjs.updateInput = function(params) {
 shinyjs.clearInput = function() {
         $("#ngram").val("").focus().change();
 };
+shinyjs.init = function() {
+        $(window).keydown(function(event) { // keypress() does not work for TAB key
+                if ( event.which == 9 ) { // TAB code
+                        event.preventDefault();
+                        if ($("#button_n1").val() !== undefined) {
+                                $("#button_n1").click();
+                        } else if ($("#button_1").val() !== undefined) {
+                                $("#button_1").click();
+                        }
+                }
+        })
+};
 '
 
 # Define UI for application that draws a map
 shinyUI(fluidPage(
         useShinyjs(),
-        extendShinyjs(text = jsCode, functions = c("updateInput", "clearInput")),
+        extendShinyjs(text = jsCode, functions = c("updateInput", "clearInput", "init")),
         # Application title
         titlePanel("Smart Keyboard"),
         # Show input form
