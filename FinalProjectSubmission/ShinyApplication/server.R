@@ -55,11 +55,8 @@ fastNextWords <- function(input,
                 prevWordDt <-
                         predictModel$ngramsDt[ngram == preTriGram & ngramsize == 2]
                 
-                prevWordFreq <- prevWordDt$frequency
-                
-                # data frame
                 featuresNextWord <-
-                        setorderv(nextWordDt[, p_bo := as.vector(predictModel$SGT.dTrigram(frequency) * frequency / prevWordFreq)],
+                        setorderv(nextWordDt[, p_bo := as.vector(predictModel$SGT.dTrigram(frequency) * frequency / prevWordDt$frequency)],
                                   c("p_bo", "prediction"), c(-1, 1))
         } else {
                 nextWordDt <- predictModel$ngramsDt[base == preBiGram & ngramsize == 2]
@@ -67,21 +64,17 @@ fastNextWords <- function(input,
                 if (nrow(nextWordDt) > k) {
                         prevWordDt <- predictModel$ngramsDt[ngram == preBiGram & ngramsize == 1]
                         
-                        prevWordFreq <- prevWordDt$frequency
-                        
-                        # data frame
                         featuresNextWord <-
-                                nextWordDt[, p_bo := as.vector(predictModel$SGT.dBigram(frequency) * frequency / prevWordFreq)]
+                                nextWordDt[, p_bo := as.vector(predictModel$SGT.dBigram(frequency) * frequency / prevWordDt$frequency)]
 
                         alpha <- 1 / sum(featuresNextWord$p_bo)
                         featuresNextWord <- setorderv(featuresNextWord[, p_bo := alpha * p_bo],
                                                       c("p_bo", "prediction"), c(-1, 1))
                 } else {
                         nextWordDt <- predictModel$ngramsDt[ngramsize == 1]
-                        prevWordFreq <- sum(nextWordDt$frequency)
-                        
+
                         featuresNextWord <-
-                                nextWordDt[, p_bo := as.vector(predictModel$SGT.dUnigram(frequency) * frequency / prevWordFreq)]
+                                nextWordDt[, p_bo := as.vector(predictModel$SGT.dUnigram(frequency) * frequency / sum(nextWordDt$frequency))]
 
                         alpha <- 1 / sum(featuresNextWord$p_bo)
                         featuresNextWord <- setorderv(featuresNextWord[, p_bo := alpha * p_bo],
@@ -116,8 +109,8 @@ fastNowWords <- function(input,
         nowWord <- prevWords(input)$nowWord
         
         predictWord <-
-                fastNextWords(prevInput, predictModel, outputs = 0) %>%
-                filter(str_detect(prediction, paste0("^", nowWord)))
+                fastNextWords(tolower(prevInput), predictModel, outputs = 0) %>%
+                filter(str_detect(prediction, paste0("^", tolower(nowWord))))
         
         if (outputs > 0) {
                 predictWord %>% slice(1:outputs)
