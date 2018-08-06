@@ -52,6 +52,7 @@ shinyUI(fluidPage(
         fluidRow(column(8,
                         wellPanel(
                                 # Show predicted next words
+                                div(id = "loading_page", h1("Loading... (about 10sec)", style = "color: #33aa00")),
                                 uiOutput("nextWordBtn"),
                                 div(textInput("ngram",
                                           "",

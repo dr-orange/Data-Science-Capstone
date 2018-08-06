@@ -175,6 +175,8 @@ normalize <- function(word, size = 0) {
 
 # Define server logic required to draw a map
 shinyServer(function(input, output, session) {
+        hide("loading_page")
+
         dataInput <- reactive({
                 ngram <- str_trim(input$ngram, side = "both")
                 fastNextWords(ngram, predictModel, outputs = 0)
