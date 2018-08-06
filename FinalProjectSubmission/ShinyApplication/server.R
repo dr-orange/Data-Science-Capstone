@@ -223,7 +223,7 @@ shinyServer(function(input, output, session) {
                         }
                 } else {
                 # Autocorrect
-                        # adist()
+                        # adist() or library(stringdist)
                 }
                 tagList(listBtn)
         })
