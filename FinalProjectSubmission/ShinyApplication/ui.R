@@ -95,7 +95,7 @@ shinyUI(fluidPage(
         ),
         p(
                 tags$span("Overview on "),
-                tags$a(href = "http://rpubs.com/dr_orange_jr/406377", "RPubs")
+                tags$a(href = "http://rpubs.com/dr_orange_jr/SmartKey", "RPubs")
         )
         
 ))

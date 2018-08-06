@@ -5,15 +5,19 @@
 .reveal a:not(.image) {
   color: #33aa00;
 }
+.reveal strong {
+  color: #33aa00;
+}
 </style>
 
 Smart Keyboard App
 ========================================================
 author: Koji
-date: Aug 5, 2018
+date: Aug 6, 2018
 autosize: true
 transition: rotate
 
+DRAFT
 ![](./res/App_large.png)
 ------------
 
@@ -23,26 +27,36 @@ Introduction and Goal
 Introduction
 -------------
 - The goal of this project is to build an interactive Shiny application that can predict the next word following a phrase of input text.
-- We used N-Gram model and the "Katz's Back-off" model with "Good Turing Estimation" smoothing.
-- We use a dataset from a corpus called HC Corpora (downsampling).
+- We used N-gram model and the "Katz's Back-off" model with "Good Turing Estimate" smoothing.
+- We downsample and use a dataset from a corpus called HC Corpora
 
 Links
 -------------
-- [Smart Keyboard App](https://dr-orange-jr.shinyapps.io/HealthImpactOfTornadoApp/)
+- [Smart Keyboard App](https://dr-orange-jr.shinyapps.io/SmartKeyboardApp/)
 - [GitHub repo](https://github.com/dr-orange/Data-Science-Capstone/tree/master/FinalProjectSubmission/ShinyApplication)
 
 Predicitive Model Algorithm
 ========================================================
+- **Prediction** - Apply "Katz's Back-off" model with saved parameters.
+- **Autocomplete** - Apply the model using the previous word. And output the candidate words by matching the characters.
+- **Autocorrect** - If no N-gram is matched, calculate the word distance to all 1-gram. Apply the model with the nearest word and predict next word.
 
-![](./res/flow.png)
+ ![](./res/flow.png)
 
 Quantitative Predictive Performance
 ========================================================
+Build 3-gram and the "Good Turing Estimate" smoothing parameter, and save it to .rda file.
 
+**Speed:** <0.5 sec.
+-------------
+**Accuracy:**  xx% of perplexity.
+-------------
+**Usability:**  xx% less typing time.
+-------------
 
 Save your typing time.
 ========================================================
-[Smart Keyboard Shiny App](https://dr-orange-jr.shinyapps.io/HealthImpactOfTornadoApp/)
+[Smart Keyboard Shiny App](https://dr-orange-jr.shinyapps.io/SmartKeyboardApp/)
 -------------
 - Fast & Inclemental Prediction (sacrificing a bit of accuracy)
 - Autocomplete
