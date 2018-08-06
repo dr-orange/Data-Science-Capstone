@@ -51,7 +51,7 @@ Build 3-gram and the "Good Turing Estimate" smoothing parameter, and save it to 
 -------------
 **Accuracy:**  xx% of perplexity.
 -------------
-**Usability:**  xx% less typing time.
+**Experience:**  xx% less typing time.
 -------------
 
 Save your typing time.
