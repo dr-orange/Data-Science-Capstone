@@ -236,7 +236,7 @@ shinyServer(function(input, output, session) {
         onclick("button_2", js$updateInput(input$ngram, "2"))
         onclick("button_3", js$updateInput(input$ngram, "3"))
         onclick("clear", js$clearInput())
-        
+
         output$distPlot <- renderPlot({
                 # plot next words
                 nextWords <- normalize(dataInput(), 3)

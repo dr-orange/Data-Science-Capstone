@@ -49,7 +49,7 @@ shinyUI(fluidPage(
         # Application title
         titlePanel("Smart Keyboard"),
         # Show input form
-        fluidRow(column(9,
+        fluidRow(column(8,
                         wellPanel(
                                 # Show predicted next words
                                 uiOutput("nextWordBtn"),
@@ -58,13 +58,14 @@ shinyUI(fluidPage(
                                           value = "What a "), style="display: inline-block;vertical-align:center;width:90%"),
                                 div(actionButton("clear", intToUtf8(as.integer("0x2573"))), style="display: inline-block;vertical-align:center;")
                         )),
-                 column(3,
+                 column(4,
                         wellPanel(
-                                h4("Features: "),
-                                span("- Prediction."),br(),
-                                span("- Autocomplete."),br(),
-                                span("- Autocorrect."),br(),
-                                style = "background: grey; color: white"
+                                span("- Prediction"),br(),
+                                span("- Autocomplete"),br(),
+                                span("- Autocorrect"),br(),
+                                span("- Applicable by tapping word"),br(),
+                                span("- Or by pressing TAB key"),br(),
+                                style = "background: #33aa00; color: white"
                         ))),
         hr(),
         h3("Inside of the prediction model", style = "color: grey"),
@@ -73,7 +74,7 @@ shinyUI(fluidPage(
                 type = "tabs",
                 tabPanel("Bar Plot",
                          span(intToUtf8(as.integer("0x25A0")), style = "color: orangered"),
-                         span("Predictedion.", style = "color: grey"),
+                         span("Prediction.", style = "color: grey"),
                          span(intToUtf8(as.integer("0x25A0")), style = "color: limegreen"),
                          span("Autocomplete.", style = "color: grey"),
                          span(intToUtf8(as.integer("0x25A0")), style = "color: royalblue"),
