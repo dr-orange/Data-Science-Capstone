@@ -53,7 +53,7 @@ downloadData <- function(workingDataPath = file.path("data")) {
 
 subSample <- function(input, output) {
         if (!file.exists(output)) {
-                subSamplingRate <- .01
+                subSamplingRate <- .03
                 fileLines <- as.numeric(countLines(input))
                 flipABiasedCoin <-
                         rbinom(fileLines, size = 1, prob = subSamplingRate)
