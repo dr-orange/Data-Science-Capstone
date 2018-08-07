@@ -203,81 +203,59 @@ fastNextWords <- function(input,
                                     sep = "_")
                 
                 nextWordDt <-
-                        predictModel$ngramsDt %>% filter(base == preTriGram, ngramsize == 3)
+                        predictModel$ngramsDt[base == preTriGram & ngramsize == 3]
         } else {
-                if (inputs == "") {
-                        return()
-                }
-                nextWordDt <- NULL
+                nextWordDt <- data.table()
         }
         preBiGram <- inputs[inputsSize]
         
         # extract n-gram that starts with input
         featuresNextWord <- NULL
         
-        if (length(nextWordDt) > k) {
+        if (nrow(nextWordDt) > k) {
                 prevWordDt <-
-                        predictModel$ngramsDt %>% filter(ngram == preTriGram, ngramsize == 2)
+                        predictModel$ngramsDt[ngram == preTriGram & ngramsize == 2]
                 
-                prevWordFreq <- prevWordDt$frequency
-                
-                # data frame
                 featuresNextWord <-
-                        nextWordDt %>%
-                        mutate(p_bo = as.vector(
-                                predictModel$SGT.dTrigram(frequency) * frequency / prevWordFreq
-                        )) %>%
-                        # Sort by reverse frequency order
-                        arrange(-p_bo, prediction)
+                        setorderv(nextWordDt[, p_bo := as.vector(predictModel$SGT.dTrigram(frequency) * frequency / prevWordDt$frequency)],
+                                  c("p_bo", "prediction"), c(-1, 1))
         } else {
-                nextWordDt <-
-                        predictModel$ngramsDt %>% filter(base == preBiGram, ngramsize == 2)
+                nextWordDt <- predictModel$ngramsDt[base == preBiGram & ngramsize == 2]
                 
-                if (length(nextWordDt) > k) {
-                        prevWordDt <-
-                                predictModel$ngramsDt %>% filter(ngram == preBiGram, ngramsize == 1)
+                if (nrow(nextWordDt) > k) {
+                        prevWordDt <- predictModel$ngramsDt[ngram == preBiGram & ngramsize == 1]
                         
-                        prevWordFreq <- prevWordDt$frequency
-                        
-                        # data frame
                         featuresNextWord <-
-                                nextWordDt %>%
-                                mutate(
-                                        p_bo = as.vector(
-                                                predictModel$SGT.dBigram(frequency) * frequency / prevWordFreq
-                                        )
-                                )
+                                nextWordDt[, p_bo := as.vector(predictModel$SGT.dBigram(frequency) * frequency / prevWordDt$frequency)]
                         
                         alpha <- 1 / sum(featuresNextWord$p_bo)
-                        featuresNextWord <- featuresNextWord %>%
-                                mutate(p_bo = alpha * p_bo) %>%
-                                # Sort by reverse frequency order
-                                arrange(-p_bo, prediction)
+                        featuresNextWord <- setorderv(featuresNextWord[, p_bo := alpha * p_bo],
+                                                      c("p_bo", "prediction"), c(-1, 1))
                 } else {
-                        nextWordDt <- predictModel$unigram
-                        prevWordFreq <- length(nextWordDfm)
+                        nextWordDt <- predictModel$ngramsDt[ngramsize == 1]
                         
                         featuresNextWord <-
-                                nextWordDt %>%
-                                mutate(
-                                        p_bo = as.vector(
-                                                predictModel$SGT.dUnigram(frequency) * frequency / prevWordFreq
-                                        )
-                                )
+                                nextWordDt[, p_bo := as.vector(predictModel$SGT.dUnigram(frequency) * frequency / sum(nextWordDt$frequency))]
                         
                         alpha <- 1 / sum(featuresNextWord$p_bo)
-                        featuresNextWord <- featuresNextWord %>%
-                                mutate(p_bo = alpha * p_bo) %>%
-                                # Sort by reverse frequency order
-                                arrange(-p_bo, prediction)
-                        
+                        featuresNextWord <- setorderv(featuresNextWord[, p_bo := alpha * p_bo],
+                                                      c("p_bo", "prediction"), c(-1, 1))
                 }
         }
+        
         if (outputs > 0) {
                 featuresNextWord %>% slice(1:outputs)
         } else {
                 featuresNextWord
         }
+}
+
+fastPerplexity <- function(input, predictModel, outputs = 3, k = 0) {
+        nextWord <- fastNextWords(input, predictModel, outputs = 0)
+        p <- nextWord$p_bo
+        N <- length(nextWord$p_bo)
+        
+        prod(1 / p^(1 / N))
 }
 
 trainModel <- function(dataPath, predictModelFilePath) {
