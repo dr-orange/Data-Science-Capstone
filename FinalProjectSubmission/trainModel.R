@@ -53,7 +53,8 @@ downloadData <- function(workingDataPath = file.path("data")) {
 
 subSample <- function(input, output) {
         if (!file.exists(output)) {
-                subSamplingRate <- .25 # 25% data. object size is >2Gb (Shinyapp.io limit 1Gb)
+                subSamplingRate <-
+                        .25 # 25% data. object size is >2Gb (Shinyapp.io limit 1Gb)
                 fileLines <- as.numeric(countLines(input))
                 flipABiasedCoin <-
                         rbinom(fileLines, size = 1, prob = subSamplingRate)
@@ -203,7 +204,8 @@ fastNextWords <- function(input,
                                     sep = "_")
                 
                 nextWordDt <-
-                        predictModel$ngramsDt[base == preTriGram & ngramsize == 3]
+                        predictModel$ngramsDt[base == preTriGram &
+                                                      ngramsize == 3]
         } else {
                 nextWordDt <- data.table()
         }
@@ -214,32 +216,45 @@ fastNextWords <- function(input,
         
         if (nrow(nextWordDt) > k) {
                 prevWordDt <-
-                        predictModel$ngramsDt[ngram == preTriGram & ngramsize == 2]
+                        predictModel$ngramsDt[ngram == preTriGram &
+                                                      ngramsize == 2]
                 
                 featuresNextWord <-
-                        setorderv(nextWordDt[, p_bo := as.vector(predictModel$SGT.dTrigram(frequency) * frequency / prevWordDt$frequency)],
-                                  c("p_bo", "prediction"), c(-1, 1))
+                        setorderv(nextWordDt[, p_bo := as.vector(
+                                predictModel$SGT.dTrigram(frequency) * frequency / prevWordDt$frequency
+                        )],
+                        c("p_bo", "prediction"), c(-1, 1))
         } else {
-                nextWordDt <- predictModel$ngramsDt[base == preBiGram & ngramsize == 2]
+                nextWordDt <-
+                        predictModel$ngramsDt[base == preBiGram & ngramsize == 2]
                 
                 if (nrow(nextWordDt) > k) {
-                        prevWordDt <- predictModel$ngramsDt[ngram == preBiGram & ngramsize == 1]
+                        prevWordDt <-
+                                predictModel$ngramsDt[ngram == preBiGram & ngramsize == 1]
                         
                         featuresNextWord <-
-                                nextWordDt[, p_bo := as.vector(predictModel$SGT.dBigram(frequency) * frequency / prevWordDt$frequency)]
+                                nextWordDt[, p_bo := as.vector(
+                                        predictModel$SGT.dBigram(frequency) * frequency / prevWordDt$frequency
+                                )]
                         
                         alpha <- 1 / sum(featuresNextWord$p_bo)
-                        featuresNextWord <- setorderv(featuresNextWord[, p_bo := alpha * p_bo],
-                                                      c("p_bo", "prediction"), c(-1, 1))
+                        featuresNextWord <-
+                                setorderv(featuresNextWord[, p_bo := alpha * p_bo],
+                                          c("p_bo", "prediction"),
+                                          c(-1, 1))
                 } else {
                         nextWordDt <- predictModel$ngramsDt[ngramsize == 1]
                         
                         featuresNextWord <-
-                                nextWordDt[, p_bo := as.vector(predictModel$SGT.dUnigram(frequency) * frequency / sum(nextWordDt$frequency))]
+                                nextWordDt[, p_bo := as.vector(
+                                        predictModel$SGT.dUnigram(frequency) * frequency / sum(nextWordDt$frequency)
+                                )]
                         
                         alpha <- 1 / sum(featuresNextWord$p_bo)
-                        featuresNextWord <- setorderv(featuresNextWord[, p_bo := alpha * p_bo],
-                                                      c("p_bo", "prediction"), c(-1, 1))
+                        featuresNextWord <-
+                                setorderv(featuresNextWord[, p_bo := alpha * p_bo],
+                                          c("p_bo", "prediction"),
+                                          c(-1, 1))
                 }
         }
         
@@ -250,24 +265,60 @@ fastNextWords <- function(input,
         }
 }
 
-fastPerplexity <- function(input, predictModel, outputs = 3, k = 0) {
-        nextWord <- fastNextWords(input, predictModel, outputs = 0)
-        p <- nextWord$p_bo
-        N <- length(nextWord$p_bo)
+fastPerplexity <- function(input, predictModel) {
+        inputSentence <- corpus_reshape(input, to = "sentence")
+        inputToken <- tokens(
+                inputSentence,
+                remove_symbols = TRUE,
+                remove_punct = TRUE,
+                remove_numbers = TRUE,
+                remove_twitter = TRUE,
+                remove_url = TRUE,
+                include_docvars = FALSE
+        )
         
-        prod(1 / p^(1 / N))
+        p_bo_unk <-
+                as.numeric(predictModel$SGT.dUnigram(0)) / sum(predictModel$ngramsDt[ngramsize == 1]$frequency)
+        S <- length(inputSentence$documents$texts)
+        N <- 0
+        p_c <- 0
+        print(paste("sentences: ", S))
+        for (s in 1:S) {
+                print(s)
+                m <- length(inputToken[[s]])
+                p_s <- 0
+                preced <- ""
+                for (i in 1:m) {
+                        w <- tolower(inputToken[[s]][i])
+                        prediction <-
+                                fastNextWords(preced, predictModel, outputs = 0)
+                        p_bo <- prediction[prediction == w]$p_bo
+                        if (length(p_bo) == 0) {
+                                p_bo <- p_bo_unk
+                        }
+                        p_s <- p_s + log2(p_bo)
+                        preced <- paste(preced, w, " ", sep = "")
+                }
+                N <- N + m
+                p_c <- p_c + p_s
+        }
+        
+        2 ^ (-p_c / N)
 }
 
 trainModel <- function(dataPath, predictModelFilePath) {
         attach(downloadData(dataPath))
         
-        blogsSubSampling <- file.path(dataPath, "sub-sample.blogs.txt")
+        blogsSubSampling <-
+                file.path(dataPath, "sub-sample.blogs.txt")
         subBlogs <- subSample(blogs, blogsSubSampling)
         
-        twitterSubSampling <- file.path(dataPath, "sub-sample.twitter.txt")
+        twitterSubSampling <-
+                file.path(dataPath, "sub-sample.twitter.txt")
         subTweets <- subSample(twitter, twitterSubSampling)
         
-        newsSubSampling <- file.path(dataPath, "sub-sample.news.txt")
+        newsSubSampling <-
+                file.path(dataPath, "sub-sample.news.txt")
         subNews <- subSample(news, newsSubSampling)
         
         blogsTrain <- paste0(blogsSubSampling, ".train.txt")
@@ -277,14 +328,18 @@ trainModel <- function(dataPath, predictModelFilePath) {
         newsTrain <- paste0(newsSubSampling, ".train.txt")
         newsTest <- paste0(newsSubSampling, ".test.txt")
         
-        trainBlogs <- devideDataset(blogsSubSampling, blogsTrain, blogsTest)
+        trainBlogs <-
+                devideDataset(blogsSubSampling, blogsTrain, blogsTest)
         trainTweets <-
                 devideDataset(twitterSubSampling, twitterTrain, twitterTest)
-        trainNews <- devideDataset(newsSubSampling, newsTrain, newsTest)
+        trainNews <-
+                devideDataset(newsSubSampling, newsTrain, newsTest)
         
         projectCorpus <- readtext(blogsTrain) %>% corpus()
-        projectCorpus <- projectCorpus + readtext(twitterTrain) %>% corpus()
-        projectCorpus <- projectCorpus + readtext(newsTrain) %>% corpus()
+        projectCorpus <-
+                projectCorpus + readtext(twitterTrain) %>% corpus()
+        projectCorpus <-
+                projectCorpus + readtext(newsTrain) %>% corpus()
         
         profanity <- readLines(badwords)
         
@@ -329,7 +384,7 @@ trainModel <- function(dataPath, predictModelFilePath) {
         trigramDt[, prediction := str_split(ngram, paste0(base, "_"), n = 2)[[1]][2], by = ngram]
         trigramDt[, ngramsize := 3, by = ngram]
         trigramDt[, frequency := colSums(trigram)]
-
+        
         bigramDt <-
                 data.table(
                         ngram = colnames(bigram),
@@ -340,7 +395,7 @@ trainModel <- function(dataPath, predictModelFilePath) {
         bigramDt[, prediction := str_split(ngram, paste0(base, "_"), n = 2)[[1]][2], by = ngram]
         bigramDt[, ngramsize := 2, by = ngram]
         bigramDt[, frequency := colSums(bigram)]
-
+        
         unigramDt <-
                 data.table(
                         ngram = colnames(unigram),

@@ -19,3 +19,6 @@ newsTest <- paste0(newsSubSampling, ".test.txt")
 blogsTestCorpus <- readtext(blogsTest) %>%
         corpus()
 
+blogsPerplexity <- fastPerplexity(blogsTestCorpus, predictModel)
+
+print(list(blogs = blogsPerplexity))
