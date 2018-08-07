@@ -44,17 +44,17 @@ fastNextWords <- function(input,
                 nextWordDt <-
                         predictModel$ngramsDt[base == preTriGram & ngramsize == 3]
         } else {
-                nextWordDt <- NULL
+                nextWordDt <- data.table()
         }
         preBiGram <- inputs[inputsSize]
         
         # extract n-gram that starts with input
         featuresNextWord <- NULL
         
-        if (length(nextWordDt) > k) {
+        if (nrow(nextWordDt) > k) {
                 prevWordDt <-
                         predictModel$ngramsDt[ngram == preTriGram & ngramsize == 2]
-                
+
                 featuresNextWord <-
                         setorderv(nextWordDt[, p_bo := as.vector(predictModel$SGT.dTrigram(frequency) * frequency / prevWordDt$frequency)],
                                   c("p_bo", "prediction"), c(-1, 1))
@@ -63,7 +63,7 @@ fastNextWords <- function(input,
                 
                 if (nrow(nextWordDt) > k) {
                         prevWordDt <- predictModel$ngramsDt[ngram == preBiGram & ngramsize == 1]
-                        
+
                         featuresNextWord <-
                                 nextWordDt[, p_bo := as.vector(predictModel$SGT.dBigram(frequency) * frequency / prevWordDt$frequency)]
 
@@ -81,7 +81,7 @@ fastNextWords <- function(input,
                                                       c("p_bo", "prediction"), c(-1, 1))
                 }
         }
-        
+
         if (outputs > 0) {
                 featuresNextWord %>% slice(1:outputs)
         } else {

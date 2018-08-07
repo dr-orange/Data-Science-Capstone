@@ -313,8 +313,10 @@ trainModel <- function(dataPath, predictModelFilePath) {
         projectToken <- projectCorpus %>%
                 # nomarize words
                 tokens(
+                        remove_symbols = TRUE,
                         remove_punct = TRUE,
                         remove_numbers = TRUE,
+                        remove_twitter = TRUE,
                         remove_url = TRUE,
                         include_docvars = FALSE
                 ) %>%
