@@ -45,13 +45,19 @@ Predicitive Model Algorithm
 
 Quantitative Predictive Performance
 ========================================================
-Build 3-gram and the "Good Turing Estimate" smoothing parameter, and save it to .rda file.
+Improve typing experience.
 
-**Speed:** <0.5 sec.
+**Efficiency:** <0.1 sec each prediction
 -------------
-**Accuracy:**  xx% of perplexity.
+
+**Accuracy:**  10.0% accuracy
 -------------
-**Experience:**  xx% less typing time.
+which the top 3 candidates have correct word.
+
+**Perplexity:**  8,143 Testing / 10,946 Training
+-------------
+
+**Experience:**  30% less typing time.
 -------------
 
 Save your typing time.
