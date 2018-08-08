@@ -16,9 +16,17 @@ twitterTest <- paste0(twitterSubSampling, ".test.txt")
 newsTrain <- paste0(newsSubSampling, ".train.txt")
 newsTest <- paste0(newsSubSampling, ".test.txt")
 
-blogsTestCorpus <- readtext(blogsTest) %>%
+
+blogsTestCorpus <- readtext("../data/20-sample.blogs.txt.test.txt") %>%
+        corpus()
+blogsTrainCorpus <- readtext("../data/20-sample.blogs.txt.train.txt") %>%
         corpus()
 
-blogsPerplexity <- fastPerplexity(blogsTestCorpus, predictModel)
+blogsTestPerplexity <- fastPerplexity(blogsTestCorpus, predictModel)
+blogsTrainPerplexity <- fastPerplexity(blogsTrainCorpus, predictModel)
 
-print(list(blogs = blogsPerplexity))
+#blogsTestAccuracy <- fastAccuracy(blogsTestCorpus, predictModel)
+#blogsTrainAccuracy <- fastAccuracy(blogsTrainCorpus, predictModel)
+
+print(c(blogsTest = blogsTestPerplexity, blogsTrain = blogsTrainPerplexity))
+#print(c(blogsTest = blogsTestAccuracy, blogsTrain = blogsTrainAccuracy))

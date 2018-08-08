@@ -42,7 +42,8 @@ fastNextWords <- function(input,
                                     sep = "_")
                 
                 nextWordDt <-
-                        predictModel$ngramsDt[base == preTriGram & ngramsize == 3]
+                        predictModel$ngramsDt[base == preTriGram &
+                                                      ngramsize == 3]
         } else {
                 nextWordDt <- data.table()
         }
@@ -53,35 +54,48 @@ fastNextWords <- function(input,
         
         if (nrow(nextWordDt) > k) {
                 prevWordDt <-
-                        predictModel$ngramsDt[ngram == preTriGram & ngramsize == 2]
-
+                        predictModel$ngramsDt[ngram == preTriGram &
+                                                      ngramsize == 2]
+                
                 featuresNextWord <-
-                        setorderv(nextWordDt[, p_bo := as.vector(predictModel$SGT.dTrigram(frequency) * frequency / prevWordDt$frequency)],
-                                  c("p_bo", "prediction"), c(-1, 1))
+                        setorderv(nextWordDt[, p_bo := as.vector(
+                                predictModel$SGT.dTrigram(frequency) * frequency / prevWordDt$frequency
+                        )],
+                        c("p_bo", "prediction"), c(-1, 1))
         } else {
-                nextWordDt <- predictModel$ngramsDt[base == preBiGram & ngramsize == 2]
+                nextWordDt <-
+                        predictModel$ngramsDt[base == preBiGram & ngramsize == 2]
                 
                 if (nrow(nextWordDt) > k) {
-                        prevWordDt <- predictModel$ngramsDt[ngram == preBiGram & ngramsize == 1]
-
+                        prevWordDt <-
+                                predictModel$ngramsDt[ngram == preBiGram & ngramsize == 1]
+                        
                         featuresNextWord <-
-                                nextWordDt[, p_bo := as.vector(predictModel$SGT.dBigram(frequency) * frequency / prevWordDt$frequency)]
-
+                                nextWordDt[, p_bo := as.vector(
+                                        predictModel$SGT.dBigram(frequency) * frequency / prevWordDt$frequency
+                                )]
+                        
                         alpha <- 1 / sum(featuresNextWord$p_bo)
-                        featuresNextWord <- setorderv(featuresNextWord[, p_bo := alpha * p_bo],
-                                                      c("p_bo", "prediction"), c(-1, 1))
+                        featuresNextWord <-
+                                setorderv(featuresNextWord[, p_bo := alpha * p_bo],
+                                          c("p_bo", "prediction"),
+                                          c(-1, 1))
                 } else {
                         nextWordDt <- predictModel$ngramsDt[ngramsize == 1]
-
+                        
                         featuresNextWord <-
-                                nextWordDt[, p_bo := as.vector(predictModel$SGT.dUnigram(frequency) * frequency / sum(nextWordDt$frequency))]
-
+                                nextWordDt[, p_bo := as.vector(
+                                        predictModel$SGT.dUnigram(frequency) * frequency / sum(nextWordDt$frequency)
+                                )]
+                        
                         alpha <- 1 / sum(featuresNextWord$p_bo)
-                        featuresNextWord <- setorderv(featuresNextWord[, p_bo := alpha * p_bo],
-                                                      c("p_bo", "prediction"), c(-1, 1))
+                        featuresNextWord <-
+                                setorderv(featuresNextWord[, p_bo := alpha * p_bo],
+                                          c("p_bo", "prediction"),
+                                          c(-1, 1))
                 }
         }
-
+        
         if (outputs > 0) {
                 featuresNextWord %>% slice(1:outputs)
         } else {

@@ -54,7 +54,7 @@ downloadData <- function(workingDataPath = file.path("data")) {
 subSample <- function(input, output) {
         if (!file.exists(output)) {
                 subSamplingRate <-
-                        .25 # 25% data. object size is >2Gb (Shinyapp.io limit 1Gb)
+                        .02 # 25% data. object size is >2Gb (Shinyapp.io limit 1Gb)
                 fileLines <- as.numeric(countLines(input))
                 flipABiasedCoin <-
                         rbinom(fileLines, size = 1, prob = subSamplingRate)
@@ -179,7 +179,7 @@ sgtFactory <- function(unigram, bigram, trigram) {
         
         c(
                 dUnigram = function(freq) {
-                        SGT1$p[as.character(freq)]
+                        SGT1$r[as.character(freq)]
                 },
                 dBigram = function(freq) {
                         SGT2$r[as.character(freq)] / freq
@@ -277,15 +277,16 @@ fastPerplexity <- function(input, predictModel) {
                 include_docvars = FALSE
         )
         
-        p_bo_unk <-
-                as.numeric(predictModel$SGT.dUnigram(0)) / sum(predictModel$ngramsDt[ngramsize == 1]$frequency)
+        N_0 <- as.numeric(predictModel$SGT.dUnigram(0))
+        N_1 <- as.numeric(predictModel$SGT.dUnigram(1))
+        p_bo_unk <- N_1 / (N_0 * sum(predictModel$ngramsDt[ngramsize == 1]$frequency))
         S <- length(inputSentence$documents$texts)
         N <- 0
         p_c <- 0
         print(paste("sentences: ", S))
         for (s in 1:S) {
-                print(s)
                 m <- length(inputToken[[s]])
+                if(m == 0) next
                 p_s <- 0
                 preced <- ""
                 for (i in 1:m) {
@@ -301,10 +302,50 @@ fastPerplexity <- function(input, predictModel) {
                 }
                 N <- N + m
                 p_c <- p_c + p_s
+#                p_c <- p_c + 2 ^ (-p_s / m)
+                cat(s, p_s, "/", m, "\n")
         }
         
         2 ^ (-p_c / N)
+#        p_c / S
 }
+
+fastAccuracy <- function(input, predictModel) {
+        inputSentence <- corpus_reshape(input, to = "sentence")
+        inputToken <- tokens(
+                inputSentence,
+                remove_symbols = TRUE,
+                remove_punct = TRUE,
+                remove_numbers = TRUE,
+                remove_twitter = TRUE,
+                remove_url = TRUE,
+                include_docvars = FALSE
+        )
+        
+        S <- length(inputSentence$documents$texts)
+        N <- 0
+        p_a <- 0
+        print(paste("sentences: ", S))
+        for (s in 1:S) {
+                m <- length(inputToken[[s]])
+                if(m == 0) next
+                preced <- ""
+                for (i in 1:m) {
+                        w <- tolower(inputToken[[s]][i])
+                        prediction <-
+                                fastNextWords(preced, predictModel, outputs = 3)
+                        if (w %in% prediction$prediction) {
+                                p_a <- p_a + 1
+                        }
+                        preced <- paste(preced, w, " ", sep = "")
+                }
+                N <- N + m
+                cat(s, p_a, "/", N, "\n")
+        }
+        
+        p_a / N
+}
+
 
 trainModel <- function(dataPath, predictModelFilePath) {
         attach(downloadData(dataPath))
