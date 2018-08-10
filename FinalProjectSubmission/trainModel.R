@@ -100,146 +100,86 @@ devideDataset <- function(input, outputTrain, outputTest) {
         return(as.numeric(countLines(outputTrain)))
 }
 
-simpleGoodTuring <- function(r, Nr, sd = 1.65) {
-        # number of words
-        N <- sum(r * Nr)
-        d <- diff(r)
-        
-        ## Turing estimate
-        # turing estimate index
-        ti <- which(d == 1)
-        # discount coefficients of Turing estimate
-        dct <- numeric(length(r))
-        dct[ti] <- (r[ti] + 1) / r[ti] * c(Nr[-1], 0)[ti] / Nr[ti]
-        
-        ## Linear Good-Turing estimate
-        Zr <- Nr / c(1, 0.5 * (d[-1] + d[-length(d)]), d[length(d)])
-        f <- lsfit(log(r), log(Zr))
-        coef <- f$coef
-        # corrected term frequency
-        rc <- r * (1 + 1 / r) ^ (1 + coef[2])
-        # discount coefficients of Linear Good-Turing estimate
-        dclgt <- rc / r
-        
-        ## make switch from Turing to LGT estimates
-        # standard deviation of term frequencies between 'r' and 'rc' (?)
-        rsd <- rep(1, length(r))
-        rsd[ti] <-
-                (seq_len(length(r))[ti] + 1) / Nr[ti] * sqrt(Nr[ti + 1] * (1 + Nr[ti + 1] / Nr[ti]))
-        
-        dc <- dct
-        for (i in 1:length(r)) {
-                if (abs(dct[i] - dclgt[i]) * r[i] / rsd[i] <= sd) {
-                        dc[i:length(dc)] <- dclgt[i:length(dc)]
-                        break
-                }
-        }
-        
-        ## renormalize the probabilities for observed objects
-        # summation of probabilities
-        sump <- sum(dc * r * Nr) / N
-        # renormalized discount coefficients
-        dcr <- (1 - Nr[1] / N) * dc / sump
-        
-        # term frequency
-        tf <- c(Nr[1] / N, r * dcr)
-        p <- c(Nr[1] / N, r * dcr / N)
-        names(p) <- names(tf) <- c(0, r)
-        
-        list(p = p, r = tf)
-}
-
-sgtFactory <- function(unigram, bigram, trigram) {
-        NrTbl1 <- textstat_frequency(unigram) %>%
-                select(frequency) %>%
-                mutate(freqOfFrequency = 1) %>%
-                group_by(frequency) %>%
-                summarise_all(sum)
-        
-        SGT1 <-
-                simpleGoodTuring(NrTbl1$frequency, NrTbl1$freqOfFrequency)
-        
-        NrTbl2 <- textstat_frequency(bigram) %>%
-                select(frequency) %>%
-                mutate(freqOfFrequency = 1) %>%
-                group_by(frequency) %>%
-                summarise_all(sum)
-        
-        SGT2 <-
-                simpleGoodTuring(NrTbl2$frequency, NrTbl2$freqOfFrequency)
-        
-        NrTbl3 <- textstat_frequency(trigram) %>%
-                select(frequency) %>%
-                mutate(freqOfFrequency = 1) %>%
-                group_by(frequency) %>%
-                summarise_all(sum)
-        
-        SGT3 <-
-                simpleGoodTuring(NrTbl3$frequency, NrTbl3$freqOfFrequency)
-        
-        c(
-                dUnigram = function(freq) {
-                        SGT1$r[as.character(freq)]
-                },
-                dBigram = function(freq) {
-                        SGT2$r[as.character(freq)] / freq
-                },
-                dTrigram = function(freq) {
-                        SGT3$r[as.character(freq)] / freq
-                }
-        )
-}
 
 fastNextWords <- function(input,
                           predictModel,
                           outputs = 3) {
         inputs <- str_split(tolower(input), "\\s+")[[1]]
         inputsSize <- length(inputs)
-        if (inputsSize > 1) {
+
+        if (inputsSize > 2) {
+                preQuadGram <- paste(inputs[inputsSize - 2],
+                                     inputs[inputsSize - 1],
+                                     inputs[inputsSize],
+                                     sep = "_")
+                
                 preTriGram <- paste(inputs[inputsSize - 1],
                                     inputs[inputsSize],
                                     sep = "_")
-                
+
                 nextWordDt <-
-                        predictModel$ngramsDt[base == preTriGram &
-                                                      ngramsize == 3]
+                        predictModel$ngramsDt[base == preQuadGram &
+                                                      ngramsize == 4]
         } else {
                 nextWordDt <- data.table()
         }
-        preBiGram <- inputs[inputsSize]
         
         # extract n-gram that starts with input
         featuresNextWord <- NULL
         
         if (nrow(nextWordDt) > 0) {
                 prevWordDt <-
-                        predictModel$ngramsDt[ngram == preTriGram &
-                                                      ngramsize == 2]
+                        predictModel$ngramsDt[ngram == preQuadGram &
+                                                      ngramsize == 3]
                 
                 featuresNextWord <-
                         setorderv(nextWordDt[, p_bo := as.vector(frequency / prevWordDt$frequency)],
                                   c("p_bo", "prediction"), c(-1, 1))
         } else {
-                nextWordDt <-
-                        predictModel$ngramsDt[base == preBiGram &
-                                                      ngramsize == 2]
+                if (inputsSize > 1) {
+                        preTriGram <- paste(inputs[inputsSize - 1],
+                                            inputs[inputsSize],
+                                            sep = "_")
+                        
+                        nextWordDt <-
+                                predictModel$ngramsDt[base == preTriGram &
+                                                              ngramsize == 3]
+                } else {
+                        nextWordDt <- data.table()
+                }
                 
                 if (nrow(nextWordDt) > 0) {
                         prevWordDt <-
-                                predictModel$ngramsDt[ngram == preBiGram &
-                                                              ngramsize == 1]
+                                predictModel$ngramsDt[ngram == preTriGram &
+                                                              ngramsize == 2]
                         
                         featuresNextWord <-
                                 setorderv(nextWordDt[, p_bo := 0.4 * as.vector(frequency / prevWordDt$frequency)],
-                                          c("p_bo", "prediction"),
-                                          c(-1, 1))
+                                          c("p_bo", "prediction"), c(-1, 1))
                 } else {
-                        nextWordDt <- predictModel$ngramsDt[ngramsize == 1]
+                        preBiGram <- inputs[inputsSize]
+
+                        nextWordDt <-
+                                predictModel$ngramsDt[base == preBiGram &
+                                                              ngramsize == 2]
                         
-                        featuresNextWord <-
-                                setorderv(nextWordDt[, p_bo := 0.4 * 0.4 * as.vector(frequency / sum(nextWordDt$frequency))],
-                                          c("p_bo", "prediction"),
-                                          c(-1, 1))
+                        if (nrow(nextWordDt) > 0) {
+                                prevWordDt <-
+                                        predictModel$ngramsDt[ngram == preBiGram &
+                                                                      ngramsize == 1]
+                                
+                                featuresNextWord <-
+                                        setorderv(nextWordDt[, p_bo := 0.4 * 0.4 * as.vector(frequency / prevWordDt$frequency)],
+                                                  c("p_bo", "prediction"),
+                                                  c(-1, 1))
+                        } else {
+                                nextWordDt <- predictModel$ngramsDt[ngramsize == 1]
+                                
+                                featuresNextWord <-
+                                        setorderv(nextWordDt[, p_bo := 0.4 * 0.4 * 0.4 * as.vector(frequency / sum(nextWordDt$frequency))],
+                                                  c("p_bo", "prediction"),
+                                                  c(-1, 1))
+                        }
                 }
         }
         
@@ -320,9 +260,8 @@ fastAccuracy <- function(input, predictModel) {
                 preced <- ""
                 for (i in 1:m) {
                         w <- tolower(inputToken[[s]][i])
-                        prediction <-
-                                fastNextWords(preced, predictModel, outputs = 3)
-                        if (w %in% prediction$prediction) {
+                        candidates <- fastNextWords(str_trim(preced, side = "both"), predictModel, outputs = 3)$prediction
+                        if (w %in% candidates) {
                                 p_a <- p_a + 1
                         }
                         preced <- paste(preced, w, " ", sep = "")
@@ -399,10 +338,24 @@ trainModel <- function(dataPath, predictModelFilePath) {
                 tokens_ngrams(n = 3) %>%
                 dfm()
         
-        SGT <- sgtFactory(unigram, bigram, trigram)
+        ## 4-Gram
+        quadgram <- projectToken %>%
+                tokens_ngrams(n = 4) %>%
+                dfm()
         
         remove(projectCorpus, projectToken)
         
+        quadgramDt <-
+                data.table(
+                        ngram = colnames(quadgram),
+                        keep.rownames = F,
+                        stringsAsFactors = F
+                )
+        quadgramDt[, base := strsplit(ngram, "_[^_]+$")[[1]], by = ngram]
+        quadgramDt[, prediction := str_split(ngram, paste0(base, "_"), n = 2)[[1]][2], by = ngram]
+        quadgramDt[, ngramsize := 4, by = ngram]
+        quadgramDt[, frequency := colSums(quadgram)]
+
         trigramDt <-
                 data.table(
                         ngram = colnames(trigram),
@@ -436,13 +389,15 @@ trainModel <- function(dataPath, predictModelFilePath) {
         unigramDt[, ngramsize := 1, by = ngram]
         unigramDt[, frequency := colSums(unigram)]
         
-        ngramsDt <- rbindlist(list(trigramDt, bigramDt, unigramDt))
+        ngramsDt <- rbindlist(list(quadgramDt, trigramDt, bigramDt, unigramDt))
+        ngramsDt <- ngramsDt[frequency > 1]
+
         setkeyv(ngramsDt, c("ngram", "base", "prediction"))
         
-        predictModel <- c(SGT = SGT, ngramsDt = list(ngramsDt))
+        predictModel <- c(ngramsDt = list(ngramsDt))
         
-        remove(trigramDt, bigramDt, unigramDt, ngramsDt)
-        remove(unigram, bigram, trigram, SGT)
+        remove(quadgramDt, trigramDt, bigramDt, unigramDt, ngramsDt)
+        remove(unigram, bigram, trigram, quadgram)
         
         save(predictModel, file = predictModelFilePath)
 }
