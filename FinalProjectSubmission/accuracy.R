@@ -21,9 +21,9 @@ badwords <-
 
 profanity <- readLines(badwords)
 
-blogsTestCorpus <- readtext("../data/20-sample.blogs.txt.test.txt") %>%
+blogsTestCorpus <- readtext("../data/600-sample.blogs.txt.test.txt") %>%
         corpus()
-blogsTrainCorpus <- readtext("../data/20-sample.blogs.txt.train.txt") %>%
+blogsTrainCorpus <- readtext("../data/600-sample.blogs.txt.train.txt") %>%
         corpus()
 
 blogsTestPerplexity <- fastPerplexity(blogsTestCorpus, predictModel)

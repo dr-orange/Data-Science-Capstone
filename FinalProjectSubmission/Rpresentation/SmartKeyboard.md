@@ -37,7 +37,7 @@ Links
 
 Predicitive Model Algorithm
 ========================================================
-- **Prediction** - Apply "Katz's Back-off" model with saved parameters.
+- **Prediction** - Apply "Katz's Back-off" model and "Good Turing Estimate" smoothing with saved parameters.
 - **Autocomplete** - Apply the model using the previous word. And output the candidate words by matching the characters.
 - **Autocorrect** - If no N-gram is matched, calculate the word distance to all 1-gram. Apply the model with the nearest word and predict next word.
 
@@ -45,26 +45,29 @@ Predicitive Model Algorithm
 
 Quantitative Predictive Performance
 ========================================================
-Improve typing experience.
+we used blogs and twitter (no news) data set of 3.5% Train(2,369,310 words), 0.06% Test(23,923 words). 
 
 **Efficiency:** <0.1 sec each prediction
 -------------
 
-**Accuracy:**  37.0% accuracy (low?)
+**Accuracy:**  37.0% accuracy
 -------------
 which the top 3 candidates have correct word.
 
 **Perplexity:** 3060.430 Test / 1869.844 Train
 -------------
 
-**Experience:**  30% less typing time.
+**Memory Usage:** 350.5 Mb
+-------------
+
+**Experience:**  60% less typing time.
 -------------
 
 Save your typing time.
 ========================================================
 [Smart Keyboard Shiny App](https://dr-orange-jr.shinyapps.io/SmartKeyboardApp/)
 -------------
-- Fast & Inclemental Prediction (sacrificing a bit of accuracy)
+- Fast & Inclemental Prediction
 - Autocomplete
 - Autocorrect
 - Applicable by tapping word or by pressing TAB key

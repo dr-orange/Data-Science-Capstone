@@ -784,7 +784,7 @@ hljs.initHighlightingOnLoad();
 <h3>Predicitive Model Algorithm</h3>
 <div class="mediaInline slideContent" >
 <ul>
-<li><strong>Prediction</strong> - Apply &ldquo;Katz&#39;s Back-off&rdquo; model with saved parameters.</li>
+<li><strong>Prediction</strong> - Apply &ldquo;Katz&#39;s Back-off&rdquo; model and &ldquo;Good Turing Estimate&rdquo; smoothing with saved parameters.</li>
 <li><strong>Autocomplete</strong> - Apply the model using the previous word. And output the candidate words by matching the characters.</li>
 <li><p><strong>Autocorrect</strong> - If no N-gram is matched, calculate the word distance to all 1-gram. Apply the model with the nearest word and predict next word.</p>
 
@@ -797,17 +797,19 @@ hljs.initHighlightingOnLoad();
 <section data-transition="default" data-transition-speed="default">
 <h3>Quantitative Predictive Performance</h3>
 <div class="slideContent" >
-<p>Improve typing experience.</p>
+<p>we used blogs and twitter (no news) data set of 3.5% Train(2,369,310 words), 0.06% Test(23,923 words). </p>
 
 <h2><strong>Efficiency:</strong> &lt;0.1 sec each prediction</h2>
 
-<h2><strong>Accuracy:</strong>  10.0% accuracy</h2>
+<h2><strong>Accuracy:</strong>  37.0% accuracy</h2>
 
 <p>which the top 3 candidates have correct word.</p>
 
-<h2><strong>Perplexity:</strong>  8,143 Testing / 10,946 Training</h2>
+<h2><strong>Perplexity:</strong> 3060.430 Test / 1869.844 Train</h2>
 
-<h2><strong>Experience:</strong>  30% less typing time.</h2>
+<h2><strong>Memory Usage:</strong> 350.5 Mb</h2>
+
+<h2><strong>Experience:</strong>  60% less typing time.</h2>
 
 </div>
 
@@ -818,7 +820,7 @@ hljs.initHighlightingOnLoad();
 <h2><a href="https://dr-orange-jr.shinyapps.io/SmartKeyboardApp/">Smart Keyboard Shiny App</a></h2>
 
 <ul>
-<li>Fast &amp; Inclemental Prediction (sacrificing a bit of accuracy)</li>
+<li>Fast &amp; Inclemental Prediction</li>
 <li>Autocomplete</li>
 <li>Autocorrect</li>
 <li>Applicable by tapping word or by pressing TAB key</li>
