@@ -16,11 +16,6 @@ twitterTest <- paste0(twitterSubSampling, ".test.txt")
 newsTrain <- paste0(newsSubSampling, ".train.txt")
 newsTest <- paste0(newsSubSampling, ".test.txt")
 
-badwords <-
-        file.path(dataPath, "bad-words.txt")
-
-profanity <- readLines(badwords)
-
 blogsTestCorpus <- readtext("../data/20-sample.blogs.txt.test.txt") %>%
         corpus()
 blogsTrainCorpus <- readtext("../data/20-sample.blogs.txt.train.txt") %>%
@@ -29,8 +24,8 @@ blogsTrainCorpus <- readtext("../data/20-sample.blogs.txt.train.txt") %>%
 #blogsTestPerplexity <- fastPerplexity(blogsTestCorpus, predictModel)
 #blogsTrainPerplexity <- fastPerplexity(blogsTrainCorpus, predictModel)
 
-blogsTestAccuracy <- fastAccuracy(blogsTestCorpus, predictModel, profanity)
-blogsTrainAccuracy <- fastAccuracy(blogsTrainCorpus, predictModel, profanity)
+blogsTestAccuracy <- fastAccuracy(blogsTestCorpus, predictModel)
+blogsTrainAccuracy <- fastAccuracy(blogsTrainCorpus, predictModel)
 
 #print(c(blogsTest = blogsTestPerplexity, blogsTrain = blogsTrainPerplexity))
 print(c(blogsTest = blogsTestAccuracy, blogsTrain = blogsTrainAccuracy))
