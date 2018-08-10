@@ -26,11 +26,11 @@ blogsTestCorpus <- readtext("../data/20-sample.blogs.txt.test.txt") %>%
 blogsTrainCorpus <- readtext("../data/20-sample.blogs.txt.train.txt") %>%
         corpus()
 
-#blogsTestPerplexity <- fastPerplexity(blogsTestCorpus, predictModel)
-#blogsTrainPerplexity <- fastPerplexity(blogsTrainCorpus, predictModel)
+blogsTestPerplexity <- fastPerplexity(blogsTestCorpus, predictModel)
+blogsTrainPerplexity <- fastPerplexity(blogsTrainCorpus, predictModel)
 
 blogsTestAccuracy <- fastAccuracy(blogsTestCorpus, predictModel, profanity)
 blogsTrainAccuracy <- fastAccuracy(blogsTrainCorpus, predictModel, profanity)
 
-#print(c(blogsTest = blogsTestPerplexity, blogsTrain = blogsTrainPerplexity))
+print(c(blogsTest = blogsTestPerplexity, blogsTrain = blogsTrainPerplexity))
 print(c(blogsTest = blogsTestAccuracy, blogsTrain = blogsTrainAccuracy))

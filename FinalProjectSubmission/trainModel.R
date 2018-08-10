@@ -292,7 +292,7 @@ fastPerplexity <- function(input, predictModel) {
                 for (i in 1:m) {
                         w <- tolower(inputToken[[s]][i])
                         prediction <-
-                                fastNextWords(preced, predictModel, outputs = 0)
+                                fastNextWords(str_trim(preced, side = "both"), predictModel, outputs = 0)
                         p_bo <- prediction[prediction == w]$p_bo
                         if (length(p_bo) == 0) {
                                 p_bo <- p_bo_unk
@@ -302,15 +302,13 @@ fastPerplexity <- function(input, predictModel) {
                 }
                 N <- N + m
                 p_c <- p_c + p_s
-#                p_c <- p_c + 2 ^ (-p_s / m)
                 cat(s, p_s, "/", m, "\n")
         }
         
         2 ^ (-p_c / N)
-#        p_c / S
 }
 
-fastAccuracy <- function(input, predictModel, profanity) {
+fastAccuracy <- function(input, predictModel) {
         inputSentence <- corpus_reshape(input, to = "sentence")
         inputToken <- tokens(
                 inputSentence,
@@ -320,10 +318,7 @@ fastAccuracy <- function(input, predictModel, profanity) {
                 remove_twitter = TRUE,
                 remove_url = TRUE,
                 include_docvars = FALSE
-        ) %>%
-        # removing profanity and other words
-        tokens_remove(profanity)
-
+        )
         
         S <- length(inputSentence$documents$texts)
         N <- 0
@@ -331,14 +326,13 @@ fastAccuracy <- function(input, predictModel, profanity) {
         print(paste("sentences: ", S))
         for (s in 1:S) {
                 m <- length(inputToken[[s]])
-                if(m == 0) next
+                if (m == 0)
+                        next
                 preced <- ""
-                p_a <- p_a + 1
                 for (i in 1:m) {
                         w <- tolower(inputToken[[s]][i])
-                        prediction <-
-                                fastNextWords(preced, predictModel, outputs = 3)
-                        if (w %in% prediction$prediction) {
+                        candidates <- fastNextWords(str_trim(preced, side = "both"), predictModel, outputs = 3)$prediction
+                        if (w %in% candidates) {
                                 p_a <- p_a + 1
                         }
                         preced <- paste(preced, w, " ", sep = "")
