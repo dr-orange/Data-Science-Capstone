@@ -259,23 +259,23 @@ shinyServer(function(input, output, session) {
         })
         
         ## --------------------------------------------------------------------------
-        output$wordCloudPlot <- renderPlot({
-                nextWords <- normalize(dataInput())
-                if (length(nextWords) > 0) {
-                        wordcloud(
-                                nextWords[, 3],
-                                nextWords[, 5],
-                                scale = c(3:.5),
-                                min.freq = 1,
-                                max.words = 50,
-                                random.order = FALSE,
-                                rot.per = .25,
-                                colors = brewer.pal(8, "Dark2")
-                        )
-                } else {
-                        
-                }
-        })
+#        output$wordCloudPlot <- renderPlot({
+#                nextWords <- normalize(dataInput())
+#                if (length(nextWords) > 0) {
+#                        wordcloud(
+#                                nextWords[, 3],
+#                                nextWords[, 5],
+#                                scale = c(3:.5),
+#                                min.freq = 1,
+#                                max.words = 50,
+#                                random.order = FALSE,
+#                                rot.per = .25,
+#                                colors = brewer.pal(8, "Dark2")
+#                        )
+#                } else {
+#                        
+#                }
+#        })
         
         output$sentimentPlot <- renderPlot({
                 nextWords <- normalize(dataInput())
