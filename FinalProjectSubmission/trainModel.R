@@ -204,22 +204,20 @@ fastPerplexity <- function(input, predictModel) {
         
         N_0 <- as.numeric(predictModel$SGT.dUnigram(0))
         N_1 <- as.numeric(predictModel$SGT.dUnigram(1))
-        p_bo_unk <-
-                N_1 / (N_0 * sum(predictModel$ngramsDt[ngramsize == 1]$frequency))
+        p_bo_unk <- N_1 / (N_0 * sum(predictModel$ngramsDt[ngramsize == 1]$frequency))
         S <- length(inputSentence$documents$texts)
         N <- 0
         p_c <- 0
         print(paste("sentences: ", S))
         for (s in 1:S) {
                 m <- length(inputToken[[s]])
-                if (m == 0)
-                        next
+                if(m == 0) next
                 p_s <- 0
                 preced <- ""
                 for (i in 1:m) {
                         w <- tolower(inputToken[[s]][i])
                         prediction <-
-                                fastNextWords(preced, predictModel, outputs = 0)
+                                fastNextWords(str_trim(preced, side = "both"), predictModel, outputs = 0)
                         p_bo <- prediction[prediction == w]$p_bo
                         if (length(p_bo) == 0) {
                                 p_bo <- p_bo_unk
@@ -229,12 +227,10 @@ fastPerplexity <- function(input, predictModel) {
                 }
                 N <- N + m
                 p_c <- p_c + p_s
-                #                p_c <- p_c + 2 ^ (-p_s / m)
                 cat(s, p_s, "/", m, "\n")
         }
         
         2 ^ (-p_c / N)
-        #        p_c / S
 }
 
 fastAccuracy <- function(input, predictModel) {
@@ -248,7 +244,7 @@ fastAccuracy <- function(input, predictModel) {
                 remove_url = TRUE,
                 include_docvars = FALSE
         )
-
+        
         S <- length(inputSentence$documents$texts)
         N <- 0
         p_a <- 0
