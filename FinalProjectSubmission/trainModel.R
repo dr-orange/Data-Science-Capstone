@@ -54,7 +54,7 @@ downloadData <- function(workingDataPath = file.path("data")) {
 subSample <- function(input, output) {
         if (!file.exists(output)) {
                 subSamplingRate <-
-                        .02 # 25% data. object size is >2Gb (Shinyapp.io limit 1Gb)
+                        .1 # 25% data. object size is >2Gb (Shinyapp.io limit 1Gb)
                 fileLines <- as.numeric(countLines(input))
                 flipABiasedCoin <-
                         rbinom(fileLines, size = 1, prob = subSamplingRate)
@@ -310,7 +310,7 @@ fastPerplexity <- function(input, predictModel) {
 #        p_c / S
 }
 
-fastAccuracy <- function(input, predictModel) {
+fastAccuracy <- function(input, predictModel, profanity) {
         inputSentence <- corpus_reshape(input, to = "sentence")
         inputToken <- tokens(
                 inputSentence,
@@ -320,7 +320,10 @@ fastAccuracy <- function(input, predictModel) {
                 remove_twitter = TRUE,
                 remove_url = TRUE,
                 include_docvars = FALSE
-        )
+        ) %>%
+        # removing profanity and other words
+        tokens_remove(profanity)
+
         
         S <- length(inputSentence$documents$texts)
         N <- 0
@@ -330,6 +333,7 @@ fastAccuracy <- function(input, predictModel) {
                 m <- length(inputToken[[s]])
                 if(m == 0) next
                 preced <- ""
+                p_a <- p_a + 1
                 for (i in 1:m) {
                         w <- tolower(inputToken[[s]][i])
                         prediction <-
@@ -340,7 +344,7 @@ fastAccuracy <- function(input, predictModel) {
                         preced <- paste(preced, w, " ", sep = "")
                 }
                 N <- N + m
-                cat(s, p_a, "/", N, "\n")
+                cat(s, p_a, "/", N, " ", (p_a / N * 100), " ", preced, "\n")
         }
         
         p_a / N
@@ -379,8 +383,8 @@ trainModel <- function(dataPath, predictModelFilePath) {
         projectCorpus <- readtext(blogsTrain) %>% corpus()
         projectCorpus <-
                 projectCorpus + readtext(twitterTrain) %>% corpus()
-        projectCorpus <-
-                projectCorpus + readtext(newsTrain) %>% corpus()
+#        projectCorpus <-
+#                projectCorpus + readtext(newsTrain) %>% corpus()
         
         profanity <- readLines(badwords)
         

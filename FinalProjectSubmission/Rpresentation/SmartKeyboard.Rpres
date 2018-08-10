@@ -50,12 +50,9 @@ Improve typing experience.
 **Efficiency:** <0.1 sec each prediction
 -------------
 
-**Accuracy:**  10.0% accuracy
+**Accuracy:**  10.0% accuracy (low?)
 -------------
 which the top 3 candidates have correct word.
-
-**Perplexity:**  8,143 Testing / 10,946 Training
--------------
 
 **Experience:**  30% less typing time.
 -------------
