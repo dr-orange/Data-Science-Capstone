@@ -17,7 +17,6 @@ date: Aug 6, 2018
 autosize: true
 transition: rotate
 
-DRAFT
 ![](./res/App_large.png)
 ------------
 
@@ -45,22 +44,22 @@ Predicitive Model Algorithm
 
 Quantitative Predictive Performance
 ========================================================
-we used blogs and twitter (no news) data set of 3.5% Train(2,369,310 words), 0.06% Test(23,923 words). 
+We used blogs and twitter (no news) data set of 3.5% Train(2,369,310 words), 0.06% Test(23,923 words). 
 
 **Efficiency:** <0.1 sec each prediction
 -------------
 
-**Accuracy:**  37.0% accuracy
+**Accuracy:**  21.4% accuracy
 -------------
 which the top 3 candidates have correct word.
 
-**Perplexity:** 3060.430 Test / 1869.844 Train
+**Perplexity:** 2864 Test / 63.2 Train
 -------------
 
 **Memory Usage:** 350.5 Mb
 -------------
 
-**Experience:**  60% less typing time.
+**Experience:**  30% less typing time.
 -------------
 
 Save your typing time.
