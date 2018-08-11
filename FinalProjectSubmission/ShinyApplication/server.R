@@ -132,6 +132,7 @@ predictCurrentWords <- function(input,
 
 nearestWord <- function(input, outputs = 0) {
         currWord <- prevWords(input)$currWord
+        uni <- predictModel[["ngramsDt"]][ngramsize==1]$prediction
         
         correctWords <-
                 data.table(
@@ -293,7 +294,7 @@ shinyServer(function(input, output, session) {
                                 geom_bar(stat = "identity", fill = "limegreen") +
                                 theme(axis.text.x = element_text(size =
                                                                          25)) +
-                                xlab("Predicted next word [Top 3]") + ylab("P_bo")
+                                xlab("Predicted complete word [Top 3]") + ylab("P_bo")
                 } else if (length(correctWords) > 0) {
                         ggplot(correctWords,
                                aes(
@@ -303,7 +304,7 @@ shinyServer(function(input, output, session) {
                                 geom_bar(stat = "identity", fill = "royalblue") +
                                 theme(axis.text.x = element_text(size =
                                                                          25)) +
-                                xlab("Predicted next word [Top 3]") + ylab("P_bo")
+                                xlab("Predicted correct word [Top 3]") + ylab("P_bo")
                 } else if (length(nextWords) > 0) {
                         ggplot(nextWords,
                                aes(
