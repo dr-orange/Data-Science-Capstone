@@ -57,7 +57,8 @@ shinyUI(fluidPage(
                                 div(textInput("ngram",
                                           "",
                                           value = "What a "), style="display: inline-block;vertical-align:center;width:90%"),
-                                div(actionButton("clear", intToUtf8(as.integer("0x2573"))), style="display: inline-block;vertical-align:center;")
+                                div(actionButton("clear", intToUtf8(as.integer("0x2573"))), style="display: inline-block;vertical-align:center;"),
+                                p("Enter your text above.")
                         )),
                  column(4,
                         wellPanel(
