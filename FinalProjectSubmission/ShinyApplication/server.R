@@ -17,6 +17,7 @@ library(wordcloud)
 library(RColorBrewer)
 library(tidytext)
 library(tibble)
+library(stringdist)
 
 # options(warn=0)
 
@@ -28,7 +29,7 @@ if (!file.exists(predictModelFilePath)) {
         load(predictModelFilePath)
 }
 
-fastNextWords <- function(input,
+predictNextWords <- function(input,
                           predictModel,
                           outputs = 3,
                           k = 0) {
@@ -103,33 +104,59 @@ fastNextWords <- function(input,
         }
 }
 
-nearestWord <- function(input) {
-        
-}
-
 prevWords <- function(input) {
         inputs <- str_split(input, "\\s+")[[1]]
         prevInput <- paste(inputs[-length(inputs)], collapse = " ")
-        nowWord <- inputs[length(inputs)]
+        currWord <- inputs[length(inputs)]
         
-        list(nowWord = nowWord, prevInput = prevInput)
+        list(currWord = currWord, prevInput = prevInput)
 }
 
-fastNowWords <- function(input,
+predictCurrentWords <- function(input,
                          predictModel,
                          outputs = 0,
                          k = 0) {
         prevInput <- prevWords(input)$prevInput
-        nowWord <- prevWords(input)$nowWord
+        currWord <- prevWords(input)$currWord
         
         predictWord <-
-                fastNextWords(tolower(prevInput), predictModel, outputs = 0) %>%
-                filter(str_detect(prediction, paste0("^", tolower(nowWord))))
+                predictNextWords(tolower(prevInput), predictModel, outputs = 0) %>%
+                filter(str_detect(prediction, paste0("^", tolower(currWord))))
         
         if (outputs > 0) {
                 predictWord %>% slice(1:outputs)
         } else {
                 predictWord
+        }
+}
+
+nearestWord <- function(input, outputs = 0) {
+        currWord <- prevWords(input)$currWord
+        
+        correctWords <-
+                data.table(
+                        prediction = uni,
+                        dist = stringdist(tolower(currWord), uni),
+                        keep.rownames = F,
+                        stringsAsFactors = F
+                )[dist < 3]
+
+        if (nrow(correctWords) > 0) {
+                correctWords <- setorderv(correctWords,
+                        c("dist"),
+                        c(1)
+                )
+        }
+        
+        if (nrow(correctWords[dist == 0]) > 0) {
+                data.table()
+        } else {
+                correctWords[, p_bo := 1 / dist]
+                if (outputs > 0) {
+                        correctWords[1:outputs]
+                } else {
+                        correctWords
+                }
         }
 }
 
@@ -162,36 +189,57 @@ normalize <- function(word, size = 0) {
 # Define server logic required to draw a map
 shinyServer(function(input, output, session) {
         hide("loading_page")
+        fontSize <- "font-size: 1.4em"
         
         dataInput <- reactive({
                 ngram <- str_trim(input$ngram, side = "both")
-                fastNextWords(ngram, predictModel, outputs = 0)
+                predictNextWords(ngram, predictModel, outputs = 0)
         })
         
-        dataInput2 <- reactive({
+        dataInputCurr <- reactive({
                 ngram <- input$ngram
                 if (length(grep("\\s$", ngram)) == 0) {
-                        fastNowWords(ngram, predictModel, outputs = 3)
+                        predictCurrentWords(ngram, predictModel, outputs = 3)
                 } else {
                         NULL
                 }
         })
         
+        dataInputCorr <- reactive({
+                ngram <- str_trim(input$ngram, side = "both")
+                nearestWord(ngram)
+        })
+        
         output$nextWordBtn <- renderUI({
                 nextWords <- normalize(dataInput(), 3)
-                nowWords <- normalize(dataInput2(), 3)
+                currentWords <- normalize(dataInputCurr(), 3)
+                correctWords <- normalize(dataInputCorr(), 3)
                 listBtn <-
-                        list(span("> ", style = "font-size: 1.4em", inline = TRUE))
-                if (length(nowWords) > 0) {
+                        list(span("> ", style = fontSize, inline = TRUE))
+                if (length(currentWords$prediction) > 0) {
                         # Autocomplete
-                        for (i in 1:length(nowWords$prediction)) {
+                        for (i in 1:length(currentWords$prediction)) {
                                 listBtn <-
                                         list(
                                                 listBtn,
                                                 actionButton(
                                                         paste0("button_n", i),
-                                                        nowWords$prediction[i],
-                                                        style = "font-size: 1.4em"
+                                                        currentWords$prediction[i],
+                                                        style = fontSize
+                                                )
+                                        )
+                        }
+                } else if (length(correctWords$prediction) > 0) {
+                        # Autocorrect
+                        # https://cran.r-project.org/doc/contrib/de_Jonge+van_der_Loo-Introduction_to_data_cleaning_with_R.pdf
+                        for (i in 1:length(correctWords$prediction)) {
+                                listBtn <-
+                                        list(
+                                                listBtn,
+                                                actionButton(
+                                                        paste0("button_c", i),
+                                                        correctWords$prediction[i],
+                                                        style = fontSize
                                                 )
                                         )
                         }
@@ -204,15 +252,11 @@ shinyServer(function(input, output, session) {
                                                 actionButton(
                                                         paste0("button_", i),
                                                         nextWords$prediction[i],
-                                                        style = "font-size: 1.4em"
+                                                        style = fontSize
                                                 )
                                         )
                                 # onclick(paste0("button_", i), js$updateInput(input$ngram, i))
                         }
-                } else {
-                        # Autocorrect
-                        # adist() or library(stringdist)
-                        # https://cran.r-project.org/doc/contrib/de_Jonge+van_der_Loo-Introduction_to_data_cleaning_with_R.pdf
                 }
                 tagList(listBtn)
         })
@@ -227,19 +271,36 @@ shinyServer(function(input, output, session) {
         onclick("button_1", js$updateInput(input$ngram, "1"))
         onclick("button_2", js$updateInput(input$ngram, "2"))
         onclick("button_3", js$updateInput(input$ngram, "3"))
+        onclick("button_c1",
+                js$updateInput(prevWords(input$ngram)$prevInput, "c1", " "))
+        onclick("button_c2",
+                js$updateInput(prevWords(input$ngram)$prevInput, "c2", " "))
+        onclick("button_c3",
+                js$updateInput(prevWords(input$ngram)$prevInput, "c3", " "))
         onclick("clear", js$clearInput())
         
         output$distPlot <- renderPlot({
                 # plot next words
                 nextWords <- normalize(dataInput(), 3)
-                nowWords <- normalize(dataInput2(), 3)
-                if (length(nowWords) > 0) {
-                        ggplot(nowWords,
+                currentWords <- normalize(dataInputCurr(), 3)
+                correctWords <- normalize(dataInputCorr(), 3)
+                if (length(currentWords) > 0) {
+                        ggplot(currentWords,
                                aes(
                                        x = reorder(prediction,-p_bo),
                                        y = p_bo
                                )) +
                                 geom_bar(stat = "identity", fill = "limegreen") +
+                                theme(axis.text.x = element_text(size =
+                                                                         25)) +
+                                xlab("Predicted next word [Top 3]") + ylab("P_bo")
+                } else if (length(correctWords) > 0) {
+                        ggplot(correctWords,
+                               aes(
+                                       x = reorder(prediction,-p_bo),
+                                       y = p_bo
+                               )) +
+                                geom_bar(stat = "identity", fill = "royalblue") +
                                 theme(axis.text.x = element_text(size =
                                                                          25)) +
                                 xlab("Predicted next word [Top 3]") + ylab("P_bo")
@@ -258,53 +319,34 @@ shinyServer(function(input, output, session) {
                 }
         })
         
-        ## --------------------------------------------------------------------------
-#        output$wordCloudPlot <- renderPlot({
+#        output$sentimentPlot <- renderPlot({
 #                nextWords <- normalize(dataInput())
 #                if (length(nextWords) > 0) {
-#                        wordcloud(
-#                                nextWords[, 3],
-#                                nextWords[, 5],
-#                                scale = c(3:.5),
-#                                min.freq = 1,
-#                                max.words = 50,
-#                                random.order = FALSE,
-#                                rot.per = .25,
-#                                colors = brewer.pal(8, "Dark2")
-#                        )
-#                } else {
+#                        emo <- nextWords %>%
+#                                left_join(get_sentiments("bing"),
+#                                          by = c("prediction" = "word")) %>%
+#                                mutate(
+#                                        sentiment = ifelse(is.na(sentiment), "na", sentiment),
+#                                        Positive = ifelse(sentiment == "positive", frequency, 0),
+#                                        Negative = ifelse(sentiment == "negative", frequency, 0),
+#                                        Neutral = ifelse(sentiment == "na", frequency, 0)
+#                                ) %>%
+#                                column_to_rownames("prediction") %>%
+#                                select(Positive, Negative, Neutral)
+#                        
+#                        if (sum(emo$Positive) * sum(emo$Negative) * sum(emo$Neutral) > 0) {
+#                                emo %>%
+#                                        comparison.cloud(
+#                                                colors = brewer.pal(8, "Dark2"),
+#                                                random.order = FALSE,
+#                                                scale = c(3:2),
+#                                                rot.per = .25,
+#                                                max.words = 50
+#                                        )
+#                        } else {
+#                                
+#                        }
 #                        
 #                }
 #        })
-        
-        output$sentimentPlot <- renderPlot({
-                nextWords <- normalize(dataInput())
-                if (length(nextWords) > 0) {
-                        emo <- nextWords %>%
-                                left_join(get_sentiments("bing"),
-                                          by = c("prediction" = "word")) %>%
-                                mutate(
-                                        sentiment = ifelse(is.na(sentiment), "na", sentiment),
-                                        Positive = ifelse(sentiment == "positive", frequency, 0),
-                                        Negative = ifelse(sentiment == "negative", frequency, 0),
-                                        Neutral = ifelse(sentiment == "na", frequency, 0)
-                                ) %>%
-                                column_to_rownames("prediction") %>%
-                                select(Positive, Negative, Neutral)
-                        
-                        if (sum(emo$Positive) * sum(emo$Negative) * sum(emo$Neutral) > 0) {
-                                emo %>%
-                                        comparison.cloud(
-                                                colors = brewer.pal(8, "Dark2"),
-                                                random.order = FALSE,
-                                                scale = c(3:2),
-                                                rot.per = .25,
-                                                max.words = 50
-                                        )
-                        } else {
-                                
-                        }
-                        
-                }
-        })
 })

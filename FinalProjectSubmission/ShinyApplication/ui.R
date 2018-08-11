@@ -80,12 +80,12 @@ shinyUI(fluidPage(
                          span("Autocomplete.", style = "color: grey"),
                          span(intToUtf8(as.integer("0x25A0")), style = "color: royalblue"),
                          span("Autocorrect.", style = "color: grey"),
-                         plotOutput("distPlot", height = "400px")),
+                         plotOutput("distPlot", height = "400px")) #,
 #                tabPanel("Word Cloud",
 #                         plotOutput("wordCloudPlot", height = "650px")),
-                tabPanel("Sentiment Word Cloud",
-                         p("The aim is to quantify the emotions of the input words and weighted the predicted next word. However, it is not done", style = "color: grey"),
-                         plotOutput("sentimentPlot", height = "650px"))
+#                tabPanel("Sentiment Word Cloud",
+#                         p("The aim is to quantify the emotions of the input words and weighted the predicted next word. However, it is not done", style = "color: grey"),
+#                         plotOutput("sentimentPlot", height = "650px"))
         ),
         
         # Appendix
