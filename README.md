@@ -9,7 +9,7 @@ I went to the
 
 the keyboard presents three options for what the next word might be. For example, the three words might be gym, store, restaurant. In this capstone you will work on understanding and building predictive text models like those used by SwiftKey.
 
-![](FinalProjectSubmission/Rpressentation/res/App_large.png)
+![](./res/App_large.png)
 
 # References
 - [Data Science Specialization - Capstone | Community Site](http://datasciencespecialization.github.io/capstone/)
