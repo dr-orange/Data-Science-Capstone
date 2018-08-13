@@ -1,5 +1,5 @@
 # Data-Science-Capstone
-Data Science Capstone on Coursera
+[Data Science Capstone on Coursera](https://www.coursera.org/specializations/jhu-data-science)
 
 # Project Overview
 
@@ -9,7 +9,39 @@ I went to the
 
 the keyboard presents three options for what the next word might be. For example, the three words might be gym, store, restaurant. In this capstone you will work on understanding and building predictive text models like those used by SwiftKey.
 
-![](./res/App_large.png)
+# Smart Keyboard (Shiny App)
+
+- **Prediction** - Apply "Katz's Back-off" model and "Good Turing Estimate" smoothing with saved parameters.
+- **Autocomplete** - Apply the model using the previous word. And output the candidate words by matching the characters.
+- **Autocorrect** - If no N-gram is matched, calculate the word distance to all 1-gram. Apply the model with the nearest word and predict next word.
+
+[Smart Keyboard - Data Science Capstone | Coursera](http://rpubs.com/dr_orange_jr/SmartKey) (RPubs)
+
+**Efficiency:** <0.1 sec each prediction
+
+**Accuracy:**  21.4% accuracy
+which the top 3 candidates have correct word.
+
+**Perplexity:** 2864 Test / 63.2 Train
+
+**Memory Usage:** 350.5 Mb
+
+**Experience:**  30% less typing time.
+
+![](./FinalProjectSubmission/Rpresentation/res/App_large.png)
+
+## App
+
+[Smart Keyboard Shiny App](https://dr-orange-jr.shinyapps.io/SmartKeyboardApp/)
+
+## Features
+
+- Fast & Inclemental Prediction
+- Autocomplete
+- Autocorrect
+- Applicable by tapping word or by pressing TAB key
+
+![](./FinalProjectSubmission/Rpresentation/res/flow.png)
 
 # References
 - [Data Science Specialization - Capstone | Community Site](http://datasciencespecialization.github.io/capstone/)

@@ -232,7 +232,6 @@ shinyServer(function(input, output, session) {
                         }
                 } else if (length(correctWords$prediction) > 0) {
                         # Autocorrect
-                        # https://cran.r-project.org/doc/contrib/de_Jonge+van_der_Loo-Introduction_to_data_cleaning_with_R.pdf
                         for (i in 1:length(correctWords$prediction)) {
                                 listBtn <-
                                         list(
